@@ -1,0 +1,304 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String  @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  User              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionToken String   @unique
+  userId       String   @db.Uuid
+  expires      DateTime
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  first_name String
+  last_name  String
+  mail_id    String  @unique
+  password   String?
+
+  address String
+  // student_test    student_test_details[]
+  branch  branch  @relation(fields: [branch_name], references: [branch_name])
+  // favourites_list favourites[]
+  note    notes[]
+
+  // test_history test_history[]
+  prof_image String
+
+  semesters    semesters      @relation(fields: [sem_no], references: [sem_no])
+  sem_no       String
+  role         Roles
+  // review          review[]
+  // test_details    test_details[]
+  college      college        @relation(fields: [college_code], references: [college_code])
+  college_code String
+  // review_reply    review_reply[]
+  branch_name  String
+  user_details user_details[]
+  // student_answers student_answers[]
+  // question_papers question_papers[]
+  Account      Account[]
+  Session      Session[]
+  tests        tests[]
+  marks        marks[]
+  answers      answers[]
+
+  @@index([id])
+  @@map("User")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model user_details {
+  id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reg_no        String? @unique
+  bio           String?
+  qualification String?
+  users         User?   @relation(fields: [usersId], references: [id])
+  usersId       String? @db.Uuid
+}
+
+enum Roles {
+  STAFF
+  STUDENT
+}
+
+model subjects {
+  sub_code String    @id
+  sub_name String
+  semester semesters @relation(fields: [sem_no], references: [sem_no])
+  sem_no   String
+  notes    notes[]
+  // test_details    test_details[]
+  // question_papers question_papers[]
+  tests    tests[]
+}
+
+model semesters {
+  sem_no   String     @id @unique
+  // test_details test_details[]
+  User     User[]
+  subjects subjects[]
+  notes    notes[]
+}
+
+model branch {
+  branch_name String  @id @unique
+  notes       notes[]
+  users       User[]
+  // question_papers question_papers[]
+}
+
+model college {
+  college_code    String @id @unique
+  college_name    String
+  address         String
+  college_mail    String
+  college_website String
+  User            User[]
+}
+
+model tests {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  test_title       String
+  subjects         subjects?   @relation(fields: [subjectsSub_code], references: [sub_code])
+  subjectsSub_code String?
+  User             User?       @relation(fields: [userId], references: [id])
+  userId           String?     @db.Uuid
+  questions        questions[]
+  marks            marks[]
+}
+
+model questions {
+  id       String    @id @default(dbgenerated("gen_random_uuid()"))
+  question String    @db.Text
+  choices  String[]
+  answer   String    @db.Text
+  tests    tests?    @relation(fields: [testsId], references: [id])
+  testsId  String?   @db.Uuid
+  answers  answers[]
+}
+
+model marks {
+  id      String  @id @default(dbgenerated("gen_random_uuid()"))
+  User    User?   @relation(fields: [userId], references: [id])
+  userId  String? @db.Uuid
+  tests   tests?  @relation(fields: [testsId], references: [id])
+  testsId String? @db.Uuid
+  marks   Int
+}
+
+model answers {
+  id          String     @id @default(dbgenerated("gen_random_uuid()"))
+  answer      String     @db.Text
+  User        User?      @relation(fields: [userId], references: [id])
+  userId      String?    @db.Uuid
+  questions   questions? @relation(fields: [questionsId], references: [id])
+  questionsId String?
+  marks       Int
+}
+
+// model favourites {
+//   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+//   note     notes  @relation(fields: [notes_id], references: [id])
+//   notes_id String @db.Uuid
+//   users    User   @relation(fields: [usersId], references: [id])
+//   usersId  String @db.Uuid
+// }
+
+model notes {
+  id    String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title String
+
+  unit_no          String
+  unit_name        String
+  branch           branch    @relation(fields: [branch_name], references: [branch_name])
+  semester         semesters @relation(fields: [sem_no], references: [sem_no])
+  sem_no           String
+  subject          subjects  @relation(fields: [sub_code], references: [sub_code])
+  sub_code         String
+  uploaded_date    DateTime? @default(now()) @db.Timestamptz()
+  likes            Int
+  dislikes         Int
+  file_url         String?
+  limit_visibility Boolean?  @default(false)
+  // favourites       favourites[]
+  // review           review[]
+  users            User      @relation(fields: [usersId], references: [id])
+  usersId          String    @db.Uuid
+  branch_name      String
+}
+
+// model review {
+//   id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+//   User           User           @relation(fields: [user_id], references: [id])
+//   user_id        String         @db.Uuid
+//   review_content String
+//   uploaded_date  DateTime
+//   note           notes          @relation(fields: [notes_id], references: [id])
+//   notes_id       String         @default(uuid()) @db.Uuid
+//   review_replies review_reply[]
+// }
+
+// model review_reply {
+//   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+//   users              User          @relation(fields: [usersId], references: [id])
+//   usersId            String        @db.Uuid
+//   review             review        @relation(fields: [reviewId], references: [id])
+//   reviewId           String        @db.Uuid
+//   reply              review_reply? @relation("own_reply")
+//   reply_review_reply review_reply? @relation("own_reply", fields: [review_reply_id], references: [id])
+//   review_reply_id    String?       @unique @db.Uuid
+//   content            String
+// }
+
+// model question_papers {
+//   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+//   subject       subjects  @relation(fields: [sub_code], references: [sub_code])
+//   sub_code      String
+//   branch        branch    @relation(fields: [branch_name], references: [branch_name])
+//   branch_name   String
+//   User          User      @relation(fields: [user_id], references: [id])
+//   user_id       String    @db.Uuid
+//   file_url      String?
+//   title         String
+//   year          String
+//   uploaded_date DateTime?
+// }
+
+// model test_details {
+//   id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+//   test_title           String
+//   subject              subjects               @relation(fields: [sub_code], references: [sub_code])
+//   sub_code             String
+//   questions_details    questions_details[]
+//   timelimit            DateTime?              @default(now())
+//   conduction_date      DateTime?              @default(now())
+//   lifetime             Boolean?               @default(false)
+//   end_date             DateTime?              @default(now())
+//   student_test_details student_test_details[]
+//   test_history         test_history[]
+//   users                User                   @relation(fields: [usersId], references: [id])
+//   usersId              String                 @db.Uuid
+//   semesters            semesters?             @relation(fields: [sem_no], references: [sem_no])
+//   sem_no               String?
+// }
+
+// model questions_details {
+//   id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+//   question        String
+//   options         String[]
+//   answer          String
+//   test            test_details      @relation(fields: [test_id], references: [id])
+//   test_id         String            @default(uuid()) @db.Uuid
+//   student_answers student_answers[]
+// }
+
+// model student_test_details {
+//   id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+//   test           test_details @relation(fields: [test_id], references: [id])
+//   test_id        String       @default(uuid()) @db.Uuid
+//   total_marks    Int
+//   duration       DateTime     @default(now())
+//   submitted_date DateTime     @default(now())
+//   users          User         @relation(fields: [usersId], references: [id])
+//   usersId        String       @db.Uuid
+// }
+
+// model student_answers {
+//   id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+//   answer String
+
+//   questions_details questions_details @relation(fields: [q_id], references: [id])
+//   q_id              String            @db.Uuid
+//   users             User              @relation(fields: [usersId], references: [id])
+//   usersId           String            @db.Uuid
+// }
+
+// model test_history {
+//   id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+//   conduction_date DateTime     @default(now())
+//   test            test_details @relation(fields: [test_id], references: [id])
+//   test_id         String       @default(uuid()) @db.Uuid
+
+//   submitted_date  DateTime @default(now())
+//   marks_allocated Int
+//   users           User     @relation(fields: [usersId], references: [id])
+//   usersId         String   @db.Uuid
+// }
