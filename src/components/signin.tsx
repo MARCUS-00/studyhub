@@ -30,9 +30,9 @@ export default function Signin() {
       </div>
       <div className="space-y-4">
         <div>
-          <label htmlFor="email" className="block text-xs font-semibold text-ink uppercase tracking-wider mb-1.5">Email address</label>
-          <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && onSubmit()} placeholder="you@college.edu" className={inputCls} />
+          <label htmlFor="userId" className="block text-xs font-semibold text-ink uppercase tracking-wider mb-1.5">Email or Registration No.</label>
+          <input id="userId" type="text" value={email} onChange={e => setEmail(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && onSubmit()} placeholder="you@college.edu or REG2024001" className={inputCls} />
         </div>
         <div>
           <label htmlFor="password" className="block text-xs font-semibold text-ink uppercase tracking-wider mb-1.5">Password</label>
