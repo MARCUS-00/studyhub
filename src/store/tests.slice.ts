@@ -7,6 +7,9 @@ import { RootState } from ".";
 import { Database } from "../../types/supabase";
 import { SupaClient } from "@/utils/supabase";
 
+// Intentionally omits the `answer` field — correct answers must not be sent
+// to the client while a test is in progress. The answer is verified server-side
+// during submission (see attendTest/t/[testId]/page.tsx → onSubmit).
 export const getTestsWithQuestions = createAsyncThunk<
   any,
   void,
@@ -16,11 +19,10 @@ export const getTestsWithQuestions = createAsyncThunk<
   async (_payload, { fulfillWithValue, rejectWithValue }) => {
     try {
       const response = await SupaClient.from("tests").select(
-        "*,User(id,first_name,prof_image),questions(*)"
+        "*,User(id,first_name,prof_image),questions(id,question,choices,testsId)"
       );
-      const data = response.data;
       if (response.error) return rejectWithValue(response.error);
-      return fulfillWithValue(data);
+      return fulfillWithValue(response.data);
     } catch (e) {
       return rejectWithValue(e);
     }
@@ -36,63 +38,35 @@ export const getTestsWithQuestionsAnswers = createAsyncThunk<
   async (payload, { fulfillWithValue, rejectWithValue }) => {
     try {
       const response = await SupaClient.from("questions")
-        .select("*,answers(answer)")
+        .select("*,answers(answer,marks)")
         .eq("testsId", payload.testId)
         .eq("answers.userId", payload.userId);
-      const data = response.data;
       if (response.error) return rejectWithValue(response.error);
-      return fulfillWithValue(data);
+      return fulfillWithValue(response.data);
     } catch (e) {
       return rejectWithValue(e);
     }
   }
 );
 
-// export const postNotes = createAsyncThunk<
-//   any,
-//   {
-//     title: string;
-//     unitNo: string;
-//     unitName: string;
-//     subCode: string;
-//     fileUrl: string;
-//     semester: string;
-//   },
-//   { rejectValue: any }
-// >(
-//   "/notes/postNotes",
-//   async (payload, { fulfillWithValue, rejectWithValue }) => {
-//     try {
-//       const response = await SupaClient.from("notes").insert({
-//         title: payload.title,
-//         unit_no: payload.unitNo,
-//         unit_name: payload.unitNo,
-//         branch_name: "CSE",
-//         sem_no: payload.semester,
-//         usersId: "b03f5fb9-7892-42dd-af35-e67af6f4b51e",
-//         sub_code: payload.subCode,
-//         file_url: payload.fileUrl,
-//         dislikes: 0,
-//         likes: 0,
-//       });
-//       if (response.error) return rejectWithValue(response.error);
-//       return fulfillWithValue(true);
-//     } catch (e) {
-//       return rejectWithValue(e);
-//     }
-//   }
-// );
+// Questions as stored in the Redux tests adapter (answer field excluded).
+export type QuestionBrief = {
+  id: string;
+  question: string;
+  choices: string[];
+  testsId: string | null;
+};
 
 export type Tests = Database["public"]["Tables"]["tests"]["Row"] & {
   User: Pick<
     Database["public"]["Tables"]["User"]["Row"],
     "id" | "first_name" | "prof_image"
   >;
-  questions: Database["public"]["Tables"]["questions"]["Row"][];
+  questions: QuestionBrief[];
 };
 
 export type TestsAnswers = Database["public"]["Tables"]["questions"]["Row"] & {
-  answers: Pick<Database["public"]["Tables"]["answers"]["Row"], "answer">[];
+  answers: Pick<Database["public"]["Tables"]["answers"]["Row"], "answer" | "marks">[];
 };
 
 const TestsAdapter = createEntityAdapter<Tests>({
@@ -116,14 +90,14 @@ export const TestsSlice = createSlice({
   reducers: {},
   extraReducers(builder) {
     builder
-      .addCase(getTestsWithQuestions.pending, (state, action) => {
+      .addCase(getTestsWithQuestions.pending, (state) => {
         state.tests.isPending = true;
       })
       .addCase(getTestsWithQuestions.fulfilled, (state, action) => {
         state.tests.isPending = false;
         TestsAdapter.setAll(state.tests, action.payload);
       })
-      .addCase(getTestsWithQuestionsAnswers.pending, (state, action) => {
+      .addCase(getTestsWithQuestionsAnswers.pending, (state) => {
         state.answers.isPending = true;
       })
       .addCase(getTestsWithQuestionsAnswers.fulfilled, (state, action) => {

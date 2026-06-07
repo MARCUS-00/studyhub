@@ -2,7 +2,7 @@
 import { useAppSelector } from "@/store/index";
 import { TestsSelector } from "@/store/tests.slice";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { AiOutlineArrowLeft } from "react-icons/ai";
 import { SupaClient } from "@/utils/supabase";
@@ -11,19 +11,39 @@ import { useSession } from "next-auth/react";
 export default function TestViewPage() {
   const router = useRouter();
   const params = useParams();
-  const id = params.testId;
+  const id = params.testId as string;
   const feed = useAppSelector((state) => TestsSelector.selectById(state, id));
   const [state, setState] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setSubmit] = useState(false);
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const session = useSession();
 
+  // Check for an existing submission so students cannot submit twice.
+  useEffect(() => {
+    const userId = session.data?.user?.id;
+    if (!userId || !id) return;
+    SupaClient.from("marks")
+      .select("id")
+      .eq("userId", userId)
+      .eq("testsId", id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setAlreadySubmitted(true);
+      });
+  }, [session.data?.user?.id, id]);
+
   const onSubmit = async () => {
+    if (alreadySubmitted) {
+      toast.error("You have already submitted this test.");
+      return;
+    }
     setSubmit(true);
     try {
       if (feed) {
         let totalMarks = 0;
         await Promise.all(
           feed.questions.map(async (question) => {
+            // Fetch the correct answer server-side at submission time.
             const response = await SupaClient.from("questions")
               .select("answer")
               .eq("id", question.id)
@@ -43,9 +63,10 @@ export default function TestViewPage() {
           testsId: feed.id,
           userId: session.data?.user?.id,
         });
+        setAlreadySubmitted(true);
         router.replace(`/dashboard/attendTest/t/${feed.id}/r/${feed.id}`);
       }
-    } catch (e) {
+    } catch {
       toast.error("Something went wrong!");
     }
     setSubmit(false);
@@ -61,6 +82,22 @@ export default function TestViewPage() {
 
   const total = feed.questions.length;
   const answered = Object.keys(state).length;
+
+  if (alreadySubmitted) {
+    return (
+      <div className="flex p-10 justify-center">
+        <div className="text-center">
+          <p className="text-lg font-medium text-ink mb-2">You have already submitted this test.</p>
+          <button
+            onClick={() => router.replace(`/dashboard/attendTest/t/${feed.id}/r/${feed.id}`)}
+            className="mt-4 px-6 py-2 bg-forest text-white rounded-xl text-sm font-semibold hover:bg-forest-mid transition-colors"
+          >
+            View Result
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-3xl mx-auto">

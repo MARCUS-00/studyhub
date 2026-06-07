@@ -3,7 +3,10 @@ import { useAppSelector } from "@/store/index";
 import { TestsSelector } from "@/store/tests.slice";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { SupaClient } from "@/utils/supabase";
+
+type AnswerRow = { marks: number; userId: string | null };
 
 function getMedal(pct: number) {
   if (pct >= 90) return "🏆";
@@ -12,26 +15,37 @@ function getMedal(pct: number) {
   return "💪";
 }
 
+async function fetchScore(testId: string, userId: string) {
+  const { data } = await SupaClient.from("questions")
+    .select("answers(marks,userId)")
+    .eq("testsId", testId);
+  if (!data) return { gain: 0, total: 0 };
+
+  let gain = 0;
+  for (const q of data) {
+    const mine = (q.answers as AnswerRow[]).find((a) => a.userId === userId);
+    gain += mine?.marks ?? 0;
+  }
+  return { gain, total: data.length };
+}
+
 export default function TestResultPage() {
   const router = useRouter();
   const params = useParams();
-  const id = params.resultTestId;
+  const id = String(params.resultTestId ?? "");
   const feed = useAppSelector((state) => TestsSelector.selectById(state, id));
+  const session = useSession();
   const [gain, setGain] = useState(0);
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    SupaClient.from("questions")
-      .select("answers(marks)")
-      .eq("testsId", id)
-      .then((value) => {
-        const scored = value.data
-          ?.map((question) => question.answers[0]?.marks ?? 0)
-          .reduce((prev, cur) => prev + cur, 0);
-        setGain(scored ?? 0);
-        setTotal(value.data?.length ?? 0);
-      });
-  }, [id]);
+    const userId = session.data?.user?.id;
+    if (!userId || !id) return;
+    fetchScore(id, userId).then(({ gain: g, total: t }) => {
+      setGain(g);
+      setTotal(t);
+    });
+  }, [id, session.data?.user?.id]);
 
   const pct = total > 0 ? Math.round((gain / total) * 100) : 0;
   const circumference = 251;
@@ -40,13 +54,10 @@ export default function TestResultPage() {
   return (
     <div className="min-h-full flex items-center justify-center p-8">
       <div className="bg-white rounded-3xl border border-forest/8 shadow-card-hover p-12 w-full max-w-md text-center">
-        {/* Medal */}
         <span className="text-6xl block mb-4">{getMedal(pct)}</span>
 
         <h1 className="font-display font-bold text-2xl text-ink mb-1">Test Complete!</h1>
-        {feed && (
-          <p className="text-sm text-muted mb-8">{feed.test_title}</p>
-        )}
+        {feed && <p className="text-sm text-muted mb-8">{feed.test_title}</p>}
 
         {/* SVG Score Ring */}
         <div className="flex justify-center mb-8">

@@ -5,17 +5,18 @@ import { NotesSelector } from "@/store/notes.slice";
 import { useMemo, useState } from "react";
 
 export default function NotesPage() {
-  const allNotes = useAppSelector(NotesSelector.selectAll);
+  // Exclude notes the staff marked as visibility-limited from the student view.
+  const allNotes = useAppSelector(NotesSelector.selectAll).filter(n => !n.limit_visibility);
   const [search, setSearch] = useState("");
   const [semFilter, setSemFilter] = useState("all");
   const [subFilter, setSubFilter] = useState("all");
 
   const semesters = useMemo(
-    () => Array.from(new Set(allNotes.map(n => n.sem_no).filter(Boolean))).sort(),
+    () => Array.from(new Set(allNotes.map(n => n.sem_no).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
     [allNotes]
   );
   const subjects = useMemo(
-    () => Array.from(new Set(allNotes.map(n => n.subjects?.sub_code).filter(Boolean))).sort(),
+    () => Array.from(new Set(allNotes.map(n => n.subjects?.sub_code).filter((s): s is string => !!s))).sort((a, b) => a.localeCompare(b)),
     [allNotes]
   );
 
@@ -48,11 +49,11 @@ export default function NotesPage() {
         />
         <select value={semFilter} onChange={e => setSemFilter(e.target.value)} className={inputCls}>
           <option value="all">All Semesters</option>
-          {semesters.map(s => <option key={s} value={s!}>Semester {s}</option>)}
+          {semesters.map(s => <option key={s} value={s}>Semester {s}</option>)}
         </select>
         <select value={subFilter} onChange={e => setSubFilter(e.target.value)} className={inputCls}>
           <option value="all">All Subjects</option>
-          {subjects.map(s => <option key={s} value={s!}>{s}</option>)}
+          {subjects.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         {hasFilter && (
           <button

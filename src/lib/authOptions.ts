@@ -1,20 +1,15 @@
 import { AuthOptions } from "next-auth";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { PrismaClient } from "@prisma/client";
 import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcrypt";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 export const NextAuthOptions: AuthOptions = {
-  adapter: PrismaAdapter(prisma),
   providers: [
     Credentials({
       credentials: {
-        userId: { label: "username or email", type: "email" },
-        password: { label: "password", type: "password" },
+        userId: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
-      type: "credentials",
       authorize: async (credentials) => {
         if (!credentials?.userId || !credentials.password) return null;
 
@@ -22,16 +17,16 @@ export const NextAuthOptions: AuthOptions = {
           where: { mail_id: credentials.userId },
         });
 
-        if (!user || !user.password) return null;
+        if (!user?.password) return null;
 
-        const isValidPassword = await compare(credentials.password, user.password);
-        if (!isValidPassword) return null;
+        const isValid = await compare(credentials.password, user.password);
+        if (!isValid) return null;
 
         return {
-          email: user.mail_id,
           id: user.id,
-          image: user.prof_image,
+          email: user.mail_id,
           name: user.first_name,
+          image: user.prof_image,
           role: user.role,
         };
       },
@@ -39,25 +34,23 @@ export const NextAuthOptions: AuthOptions = {
   ],
   pages: {
     signIn: "/signin",
-    verifyRequest: "/verify-request",
-    newUser: "/sign-up",
+    newUser: "/signup",
   },
   callbacks: {
-    session: async ({ session, token }) => {
-      if (session?.user) {
-        session.user.id = token.uid;
-        const user = await prisma.user.findUnique({ where: { id: token.uid } });
-        if (user?.role) session.user.role = user.role;
-      }
-      return session;
-    },
+    // authorize already returns id + role — store them in the token once.
     jwt: async ({ user, token }) => {
       if (user) {
         token.uid = user.id;
-        const userRes = await prisma.user.findUnique({ where: { id: user.id } });
-        if (userRes?.role) token.role = userRes.role;
+        token.role = user.role;
       }
       return token;
+    },
+    session: async ({ session, token }) => {
+      if (session?.user) {
+        session.user.id = token.uid;
+        session.user.role = token.role;
+      }
+      return session;
     },
   },
   session: { strategy: "jwt" },

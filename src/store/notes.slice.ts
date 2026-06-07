@@ -14,9 +14,8 @@ export const getNotes = createAsyncThunk<any, void, { rejectValue: any }>(
       const response = await SupaClient.from("notes")
         .select("*,User(id,first_name,prof_image),subjects(sub_code,sub_name)")
         .order("uploaded_date", { ascending: false });
-      const data = response.data;
       if (response.error) return rejectWithValue(response.error);
-      return fulfillWithValue(data);
+      return fulfillWithValue(response.data);
     } catch (e) {
       return rejectWithValue(e);
     }
@@ -33,6 +32,7 @@ export const postNotes = createAsyncThunk<
     fileUrl: string;
     semester: string;
     userId: string;
+    branchName?: string;
   },
   { rejectValue: any }
 >(
@@ -43,7 +43,7 @@ export const postNotes = createAsyncThunk<
         title: payload.title,
         unit_no: payload.unitNo,
         unit_name: payload.unitName,
-        branch_name: "CSE",
+        branch_name: payload.branchName ?? "CSE",
         sem_no: payload.semester,
         usersId: payload.userId,
         sub_code: payload.subCode,
@@ -78,19 +78,28 @@ export const NotesSlice = createSlice({
   name: "notes",
   initialState: NotesAdapter.getInitialState({
     isPending: false,
+    isError: false,
+    errorMessage: "",
   }),
   reducers: {},
   extraReducers(builder) {
     builder
-      .addCase(getNotes.pending, (state, action) => {
+      .addCase(getNotes.pending, (state) => {
         state.isPending = true;
+        state.isError = false;
+        state.errorMessage = "";
       })
       .addCase(getNotes.fulfilled, (state, action) => {
         state.isPending = false;
         NotesAdapter.setAll(state, action.payload);
       })
-      .addCase(getNotes.rejected, (state) => {
+      .addCase(getNotes.rejected, (state, action) => {
         state.isPending = false;
+        state.isError = true;
+        state.errorMessage =
+          typeof action.payload === "string"
+            ? action.payload
+            : "Failed to load notes.";
       });
   },
 });
