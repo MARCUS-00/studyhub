@@ -14,29 +14,52 @@ export async function POST(req: NextRequest) {
     if (!noteId || !type || !action) {
       return NextResponse.json({ error: "Missing fields." }, { status: 400 });
     }
+    if (type !== "like" && type !== "dislike") {
+      return NextResponse.json({ error: "Invalid type." }, { status: 400 });
+    }
 
     const field = type === "like" ? "likes" : "dislikes";
-    const delta = action === "remove" ? -1 : 1;
+    const userId = session.user.id;
 
     const note = await prisma.notes.findUnique({
       where: { id: noteId },
       select: { likes: true, dislikes: true },
     });
-
     if (!note) {
       return NextResponse.json({ error: "Note not found." }, { status: 404 });
     }
 
-    const current = note[field] ?? 0;
-    const next = Math.max(0, current + delta);
+    if (action === "remove") {
+      await prisma.$transaction([
+        prisma.note_likes.deleteMany({ where: { userId, noteId, type } }),
+        prisma.notes.update({
+          where: { id: noteId },
+          data: { [field]: Math.max(0, (note[field] ?? 0) - 1) },
+        }),
+      ]);
+    } else {
+      // Prevent duplicate reaction of the same type
+      const existing = await prisma.note_likes.findUnique({
+        where: { userId_noteId_type: { userId, noteId, type } },
+      });
+      if (existing) {
+        return NextResponse.json({ error: "Already reacted." }, { status: 409 });
+      }
+      await prisma.$transaction([
+        prisma.note_likes.create({ data: { userId, noteId, type } }),
+        prisma.notes.update({
+          where: { id: noteId },
+          data: { [field]: (note[field] ?? 0) + 1 },
+        }),
+      ]);
+    }
 
-    const updated = await prisma.notes.update({
+    const updated = await prisma.notes.findUnique({
       where: { id: noteId },
-      data: { [field]: next },
       select: { likes: true, dislikes: true },
     });
 
-    return NextResponse.json({ likes: updated.likes, dislikes: updated.dislikes });
+    return NextResponse.json({ likes: updated?.likes, dislikes: updated?.dislikes });
   } catch {
     return NextResponse.json({ error: "Internal server error." }, { status: 500 });
   }

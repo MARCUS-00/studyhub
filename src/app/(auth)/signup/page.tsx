@@ -6,27 +6,45 @@ import { useRouter } from "next/navigation";
 
 export default function SignupPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", password: "", confirmPassword: "", semester: "1", branch: "CSE" });
+  const [form, setForm] = useState({
+    firstName: "", lastName: "", email: "", password: "", confirmPassword: "",
+    semester: "1", branch: "CSE", regNo: "", mobileNo: "",
+  });
   const [loading, setLoading] = useState(false);
 
   const update = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (form.password.length < 6) { toast.error("Password must be at least 6 characters."); return; }
-    if (form.password !== form.confirmPassword) { toast.error("Passwords do not match."); return; }
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: form.email, password: form.password, firstName: form.firstName, lastName: form.lastName, semester: form.semester, branch: form.branch }),
-      });
-      const data = await res.json();
-      if (!res.ok) toast.error(data.error || "Something went wrong.");
-      else { toast.success("Account created! Please sign in."); router.replace("/signin"); }
-    } catch { toast.error("Something went wrong."); }
-    finally { setLoading(false); }
+    if (form.password === form.confirmPassword) {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: form.email,
+            password: form.password,
+            firstName: form.firstName,
+            lastName: form.lastName,
+            semester: form.semester,
+            branch: form.branch,
+            regNo: form.regNo || undefined,
+            mobileNo: form.mobileNo || undefined,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          toast.success("Account created! Please sign in.");
+          router.replace("/signin");
+        } else {
+          toast.error(data.error || "Something went wrong.");
+        }
+      } catch { toast.error("Something went wrong."); }
+      finally { setLoading(false); }
+    } else {
+      toast.error("Passwords do not match.");
+    }
   };
 
   const inputCls = "block w-full rounded-xl border border-forest/15 py-2.5 px-4 text-ink text-sm focus:outline-none focus:ring-2 focus:ring-emerald/40 focus:border-transparent bg-white";
@@ -56,9 +74,20 @@ export default function SignupPage() {
           <input id="signup-email" type="email" required value={form.email} onChange={(e) => update("email", e.target.value)} className={inputCls} placeholder="you@example.com" />
         </div>
 
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="signup-regNo" className={labelCls}>Registration No.</label>
+            <input id="signup-regNo" type="text" value={form.regNo} onChange={(e) => update("regNo", e.target.value)} className={inputCls} placeholder="REG2024001" />
+          </div>
+          <div>
+            <label htmlFor="signup-mobileNo" className={labelCls}>Mobile No.</label>
+            <input id="signup-mobileNo" type="tel" value={form.mobileNo} onChange={(e) => update("mobileNo", e.target.value)} className={inputCls} placeholder="9876543210" />
+          </div>
+        </div>
+
         <div>
-          <label htmlFor="signup-password" className={labelCls}>Password * (min 6 chars)</label>
-          <input id="signup-password" type="password" required minLength={6} value={form.password} onChange={(e) => update("password", e.target.value)} className={inputCls} placeholder="••••••••" />
+          <label htmlFor="signup-password" className={labelCls}>Password * (min 8 chars, number, special char)</label>
+          <input id="signup-password" type="password" required minLength={8} value={form.password} onChange={(e) => update("password", e.target.value)} className={inputCls} placeholder="••••••••" />
         </div>
 
         <div>

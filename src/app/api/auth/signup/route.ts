@@ -6,7 +6,7 @@ import { validatePassword } from "@/lib/passwordPolicy";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, password, firstName, lastName, semester, branch } = body;
+    const { email, password, firstName, lastName, semester, branch, regNo, mobileNo } = body;
 
     if (!email || !password || !firstName) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
@@ -20,6 +20,13 @@ export async function POST(req: NextRequest) {
     const existing = await prisma.user.findUnique({ where: { mail_id: email } });
     if (existing) {
       return NextResponse.json({ error: "An account with this email already exists." }, { status: 409 });
+    }
+
+    if (regNo) {
+      const takenRegNo = await prisma.user_details.findUnique({ where: { reg_no: regNo } });
+      if (takenRegNo) {
+        return NextResponse.json({ error: "Registration number already in use." }, { status: 409 });
+      }
     }
 
     const hashedPassword = await hash(password, 10);
@@ -50,7 +57,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         first_name: firstName,
         last_name: lastName ?? "",
@@ -64,6 +71,16 @@ export async function POST(req: NextRequest) {
         college_code: "305",
       },
     });
+
+    if (regNo || mobileNo) {
+      await prisma.user_details.create({
+        data: {
+          usersId: user.id,
+          reg_no: regNo ?? null,
+          mobile_no: mobileNo ?? null,
+        },
+      });
+    }
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (err) {

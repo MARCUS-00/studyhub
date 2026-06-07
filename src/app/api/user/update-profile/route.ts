@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    const { firstName, lastName, branchName, semNo } = await req.json();
+    const { firstName, lastName, branchName, semNo, profImage, mobileNo } = await req.json();
 
     if (branchName) {
       await prisma.branch.upsert({
@@ -34,8 +34,25 @@ export async function POST(req: NextRequest) {
         ...(lastName !== undefined && { last_name: lastName }),
         ...(branchName && { branch_name: branchName }),
         ...(semNo && { sem_no: String(semNo) }),
+        ...(profImage !== undefined && { prof_image: profImage }),
       },
     });
+
+    if (mobileNo !== undefined) {
+      const existing = await prisma.user_details.findFirst({
+        where: { usersId: session.user.id },
+      });
+      if (existing) {
+        await prisma.user_details.update({
+          where: { id: existing.id },
+          data: { mobile_no: mobileNo },
+        });
+      } else {
+        await prisma.user_details.create({
+          data: { usersId: session.user.id, mobile_no: mobileNo },
+        });
+      }
+    }
 
     return NextResponse.json({ success: true, user: updated });
   } catch {

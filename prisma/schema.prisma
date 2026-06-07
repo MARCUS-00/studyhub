@@ -71,6 +71,8 @@ model User {
   tests        tests[]
   marks        marks[]
   answers      answers[]
+  note_likes   note_likes[]
+  favourites   favourites[]
 
   @@index([id])
   @@map("User")
@@ -87,6 +89,7 @@ model VerificationToken {
 model user_details {
   id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   reg_no        String? @unique
+  mobile_no     String?
   bio           String?
   qualification String?
   users         User?   @relation(fields: [usersId], references: [id])
@@ -173,14 +176,27 @@ model answers {
   marks       Int
 }
 
-// model favourites {
-//   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+model favourites {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  note     notes  @relation(fields: [notes_id], references: [id], onDelete: Cascade)
+  notes_id String @db.Uuid
+  users    User   @relation(fields: [usersId], references: [id], onDelete: Cascade)
+  usersId  String @db.Uuid
 
-//   note     notes  @relation(fields: [notes_id], references: [id])
-//   notes_id String @db.Uuid
-//   users    User   @relation(fields: [usersId], references: [id])
-//   usersId  String @db.Uuid
-// }
+  @@unique([usersId, notes_id])
+}
+
+model note_likes {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @db.Uuid
+  noteId String @db.Uuid
+  type   String
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  note notes @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, noteId, type])
+}
 
 model notes {
   id    String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -198,7 +214,8 @@ model notes {
   dislikes         Int
   file_url         String?
   limit_visibility Boolean?  @default(false)
-  // favourites       favourites[]
+  favourites       favourites[]
+  note_likes       note_likes[]
   // review           review[]
   users            User      @relation(fields: [usersId], references: [id])
   usersId          String    @db.Uuid

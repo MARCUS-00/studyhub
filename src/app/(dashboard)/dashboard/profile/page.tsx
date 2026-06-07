@@ -1,9 +1,10 @@
 "use client";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { AiOutlineArrowLeft, AiOutlineEdit, AiOutlineUser } from "react-icons/ai";
+import { SupaClient } from "@/utils/supabase";
 
 const POLICY_HINT = "Min 8 chars, one number, one special character.";
 
@@ -20,14 +21,18 @@ export default function ProfilePage() {
   const router = useRouter();
   const { data: session, update: updateSession } = useSession();
   const user = session?.user;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(user?.image ?? "");
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [form, setForm] = useState({
     firstName: user?.name?.split(" ")[0] ?? "",
     lastName: user?.name?.split(" ")[1] ?? "",
     branch: "CSE",
     semNo: "6",
+    mobileNo: "",
   });
 
   const [changingPw, setChangingPw] = useState(false);
@@ -36,8 +41,43 @@ export default function ProfilePage() {
 
   const inputCls = "w-full rounded-xl border border-forest/15 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/40 focus:border-emerald transition";
 
+  // Load user details (reg_no, mobile_no)
+  useEffect(() => {
+    fetch("/api/user/profile")
+      .then(r => r.json())
+      .then(d => {
+        if (d.mobileNo) setForm(p => ({ ...p, mobileNo: d.mobileNo }));
+      })
+      .catch(() => undefined);
+  }, []);
+
   const updateField = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
   const updatePwField = (k: string, v: string) => setPwForm(p => ({ ...p, [k]: v }));
+
+  const onAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
+    setAvatarUploading(true);
+    try {
+      // Requires an "avatars" bucket in Supabase Storage with an authenticated-user upload policy
+      const path = `${user.id}/${Date.now()}.${file.name.split(".").pop()}`;
+      const { error } = await SupaClient.storage.from("avatars").upload(path, file, { upsert: true });
+      if (error) { toast.error("Upload failed."); return; }
+      const { data: { publicUrl } } = SupaClient.storage.from("avatars").getPublicUrl(path);
+      await fetch("/api/user/update-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profImage: publicUrl }),
+      });
+      setAvatarUrl(publicUrl);
+      await updateSession();
+      toast.success("Profile picture updated!");
+    } catch {
+      toast.error("Something went wrong.");
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   const onSave = async () => {
     setSaving(true);
@@ -50,6 +90,7 @@ export default function ProfilePage() {
           lastName: form.lastName,
           branchName: form.branch,
           semNo: form.semNo,
+          mobileNo: form.mobileNo || undefined,
         }),
       });
       if (!res.ok) throw new Error("Profile update failed.");
@@ -101,9 +142,25 @@ export default function ProfilePage() {
 
       {/* Header band */}
       <div className="bg-forest rounded-2xl p-8 mb-6 flex flex-col items-center gap-3 text-center">
-        <div className="w-20 h-20 rounded-full bg-emerald/20 flex items-center justify-center">
-          <AiOutlineUser className="text-4xl text-emerald-lt" />
-        </div>
+        {/* Avatar with upload */}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={avatarUploading}
+          className="relative w-20 h-20 rounded-full bg-emerald/20 flex items-center justify-center group overflow-hidden"
+          title="Change profile picture"
+        >
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+          ) : (
+            <AiOutlineUser className="text-4xl text-emerald-lt" />
+          )}
+          <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold rounded-full">
+            {avatarUploading ? "…" : "Edit"}
+          </span>
+        </button>
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onAvatarChange} />
+
         <span className="text-xs font-semibold px-3 py-1 rounded-full bg-forest/30 text-white/80">
           {user?.role ?? "STUDENT"}
         </span>
@@ -156,6 +213,13 @@ export default function ProfilePage() {
                   </select>
                 : <p className="text-sm font-medium text-ink">{form.semNo}</p>}
             </div>
+          </div>
+
+          <div>
+            <label htmlFor="prof-mobile" className={labelCls}>Mobile No.</label>
+            {editing
+              ? <input id="prof-mobile" type="tel" value={form.mobileNo} onChange={e => updateField("mobileNo", e.target.value)} placeholder="9876543210" className={inputCls} />
+              : <p className="text-sm font-medium text-ink">{form.mobileNo || "—"}</p>}
           </div>
 
           {/* Email is read-only — no associated input, so we use a styled <p> heading */}

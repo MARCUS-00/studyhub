@@ -1,7 +1,7 @@
 "use client";
 import { Notes } from "@/store/notes.slice";
 import Image from "next/image";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   AiFillDislike,
   AiFillLike,
@@ -9,6 +9,7 @@ import {
   AiOutlineLike,
   AiOutlineUser,
 } from "react-icons/ai";
+import { BsBookmark, BsBookmarkFill } from "react-icons/bs";
 import moment from "moment";
 import Link from "next/link";
 
@@ -19,15 +20,15 @@ const IMAGES = [
   "https://m.media-amazon.com/images/I/911IjI1tl2L._AC_UF1000,1000_QL80_.jpg",
 ];
 const stableImg = (id: string) =>
-  IMAGES[id.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % IMAGES.length];
+  IMAGES[id.split("").reduce((a, c) => a + (c.codePointAt(0) ?? 0), 0) % IMAGES.length];
 
 export default function NotesCard({
   feed,
   isStaff,
-}: {
+}: Readonly<{
   feed: Notes;
   isStaff?: boolean;
-}) {
+}>) {
   if (!feed) return null;
   return (
     <Link
@@ -79,9 +80,12 @@ export default function NotesCard({
             </span>
           </div>
 
-          <div className="flex justify-between pt-2 border-t border-forest/5">
-            <LikeButton noteId={feed.id} initialLikes={feed.likes ?? 0} />
-            <DisLikeButton noteId={feed.id} initialDislikes={feed.dislikes ?? 0} />
+          <div className="flex items-center justify-between pt-2 border-t border-forest/5">
+            <div className="flex gap-3">
+              <LikeButton noteId={feed.id} initialLikes={feed.likes ?? 0} />
+              <DisLikeButton noteId={feed.id} initialDislikes={feed.dislikes ?? 0} />
+            </div>
+            {!isStaff && <SaveButton noteId={feed.id} />}
           </div>
         </div>
       </div>
@@ -92,10 +96,7 @@ export default function NotesCard({
 export const LikeButton = ({
   noteId,
   initialLikes,
-}: {
-  noteId: string;
-  initialLikes: number;
-}) => {
+}: Readonly<{ noteId: string; initialLikes: number }>) => {
   const [liked, setLiked] = useState(false);
   const [count, setCount] = useState(initialLikes);
 
@@ -104,11 +105,16 @@ export const LikeButton = ({
     const next = !liked;
     setLiked(next);
     setCount(c => c + (next ? 1 : -1));
-    await fetch("/api/notes/like", {
+    const res = await fetch("/api/notes/like", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ noteId, type: "like", action: next ? "add" : "remove" }),
     });
+    if (!res.ok) {
+      // Revert optimistic update on failure (e.g. 409 duplicate)
+      setLiked(!next);
+      setCount(c => c + (next ? -1 : 1));
+    }
   }, [liked, noteId]);
 
   return (
@@ -131,10 +137,7 @@ export const LikeButton = ({
 export const DisLikeButton = ({
   noteId,
   initialDislikes,
-}: {
-  noteId: string;
-  initialDislikes: number;
-}) => {
+}: Readonly<{ noteId: string; initialDislikes: number }>) => {
   const [disliked, setDisliked] = useState(false);
   const [count, setCount] = useState(initialDislikes);
 
@@ -143,11 +146,15 @@ export const DisLikeButton = ({
     const next = !disliked;
     setDisliked(next);
     setCount(c => c + (next ? 1 : -1));
-    await fetch("/api/notes/like", {
+    const res = await fetch("/api/notes/like", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ noteId, type: "dislike", action: next ? "add" : "remove" }),
     });
+    if (!res.ok) {
+      setDisliked(!next);
+      setCount(c => c + (next ? -1 : 1));
+    }
   }, [disliked, noteId]);
 
   return (
@@ -164,5 +171,44 @@ export const DisLikeButton = ({
       </button>
       {count > 0 && <span className="text-xs font-medium text-red-400">{count}</span>}
     </div>
+  );
+};
+
+export const SaveButton = ({ noteId }: Readonly<{ noteId: string }>) => {
+  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/notes/favourite?noteId=${noteId}`)
+      .then(r => r.json())
+      .then(d => { if (typeof d.saved === "boolean") setSaved(d.saved); })
+      .catch(() => undefined);
+  }, [noteId]);
+
+  const toggle = useCallback(async () => {
+    if (loading) return;
+    setLoading(true);
+    const res = await fetch("/api/notes/favourite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ noteId }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setSaved(data.saved);
+    }
+    setLoading(false);
+  }, [noteId, loading]);
+
+  return (
+    <button
+      onClick={(e) => { e.preventDefault(); toggle(); }}
+      className="flex justify-center items-center h-7 w-7 transition-all duration-300 hover:bg-forest/10 rounded-full"
+      title={saved ? "Remove from saved" : "Save note"}
+    >
+      {saved
+        ? <BsBookmarkFill className="text-base text-forest" />
+        : <BsBookmark className="text-base text-muted" />}
+    </button>
   );
 };
