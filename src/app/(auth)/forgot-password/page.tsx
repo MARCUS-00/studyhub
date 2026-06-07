@@ -95,6 +95,9 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="w-full max-w-md fade-up">
+      <Link href="/signin" className="flex items-center gap-2 text-muted hover:text-ink text-sm mb-6 transition-colors">
+        ← Back to sign in
+      </Link>
       <div className="mb-8">
         <h1 className="font-display text-3xl font-bold text-ink mb-1">Forgot password?</h1>
         <p className="text-muted text-sm">Enter your email and we&apos;ll help you reset it.</p>

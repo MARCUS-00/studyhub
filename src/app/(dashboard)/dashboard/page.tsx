@@ -31,12 +31,11 @@ export default function Dashboard() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {[
-          { label: "Total Notes", value: Notes.length, emoji: "📚" },
-          { label: "Total Tests", value: Tests.length, emoji: "✏️" },
-          { label: "Semester", value: "6", emoji: "🎓" },
-          { label: "Department", value: "CSE", emoji: "💻" },
+          { label: "Total Notes",  value: Notes.length, emoji: "📚" },
+          { label: "Total Tests",  value: Tests.length, emoji: "✏️" },
+          { label: "Branch",       value: "CSE",         emoji: "💻" },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-2xl border border-forest/8 shadow-card p-5 flex flex-col gap-1">
             <span className="text-2xl">{s.emoji}</span>
