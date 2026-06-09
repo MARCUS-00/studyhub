@@ -1,19 +1,28 @@
 "use client";
 import NotesCard from "@/components/notesCard";
 import { useAppSelector } from "@/store/index";
-import { NotesSelector } from "@/store/notes.slice";
+import { NotesSelector, getNotes } from "@/store/notes.slice";
+import { useAppDispatch } from "@/utils/hooks";
 import Link from "next/link";
+import { useEffect } from "react";
 import { SlNote } from "react-icons/sl";
 
 export default function NotesPage() {
+  const dispatch = useAppDispatch();
   const Notes = useAppSelector(NotesSelector.selectAll);
+
+  useEffect(() => {
+    if (Notes.length === 0) dispatch(getNotes());
+  }, [Notes.length, dispatch]);
 
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="font-display font-bold text-xl text-ink">All Notes</h2>
-          <p className="text-sm text-muted mt-1">{Notes.length} notes available</p>
+          <p className="text-sm text-muted mt-1">
+            {Notes.length} notes available
+          </p>
         </div>
         <Link
           href="/staffDashboard/new-notes"

@@ -4,6 +4,7 @@ import { compare } from "bcrypt";
 import { prisma } from "@/lib/prisma";
 
 export const NextAuthOptions: AuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     Credentials({
       credentials: {
@@ -31,9 +32,7 @@ export const NextAuthOptions: AuthOptions = {
         const isValid = await compare(credentials.password, user.password);
         if (!isValid) return null;
 
-        // Throw a named error so the sign-in page can redirect to OTP verification
-        // instead of showing a generic "Invalid credentials" message.
-        if (!user.email_verified) throw new Error("unverified_email");
+        if (!user.email_verified) return null;
 
         return {
           id: user.id,

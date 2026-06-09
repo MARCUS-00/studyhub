@@ -2,7 +2,7 @@
 import { useAppSelector } from "@/store/index";
 import { TestsSelector } from "@/store/tests.slice";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { AiOutlineArrowLeft, AiOutlineClockCircle } from "react-icons/ai";
 import { useSession } from "next-auth/react";
@@ -17,6 +17,10 @@ export default function TestViewPage() {
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const session = useSession();
 
+  // Countdown timer (seconds). Initialised once feed loads.
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // Check for an existing submission so students cannot submit twice.
   useEffect(() => {
     const userId = session.data?.user?.id;
@@ -27,7 +31,14 @@ export default function TestViewPage() {
       .catch(() => {});
   }, [session.data?.user?.id, id]);
 
-  const onSubmit = async () => {
+  // Seed the timer once feed is available and has a duration.
+  useEffect(() => {
+    if (feed?.duration_minutes && !alreadySubmitted && timeLeft === null) {
+      setTimeLeft(feed.duration_minutes * 60);
+    }
+  }, [feed?.duration_minutes, alreadySubmitted, timeLeft]);
+
+  const onSubmit = useCallback(async () => {
     if (alreadySubmitted) {
       toast.error("You have already submitted this test.");
       return;
@@ -60,6 +71,25 @@ export default function TestViewPage() {
     } finally {
       setSubmit(false);
     }
+  }, [alreadySubmitted, feed, id, router, state]);
+
+  // Tick the timer; auto-submit on expiry.
+  useEffect(() => {
+    if (timeLeft === null || alreadySubmitted) return;
+    if (timeLeft <= 0) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      toast("Time's up! Submitting your answers…", { icon: "⏰" });
+      onSubmit();
+      return;
+    }
+    timerRef.current = setInterval(() => setTimeLeft((t) => (t ?? 1) - 1), 1000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [timeLeft, alreadySubmitted, onSubmit]);
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60).toString().padStart(2, "0");
+    const s = (secs % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
   };
 
   if (!feed) {
@@ -103,6 +133,14 @@ export default function TestViewPage() {
           <h1 className="font-display font-semibold text-ink">{feed.test_title}</h1>
           <p className="text-xs text-muted mt-0.5">{answered} of {total} answered</p>
         </div>
+        {timeLeft !== null && (
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold tabular-nums ${
+            timeLeft <= 60 ? "bg-red-50 text-red-500 border border-red-200" : "bg-emerald/10 text-emerald"
+          }`}>
+            <AiOutlineClockCircle className="flex-shrink-0" />
+            {formatTime(timeLeft)}
+          </div>
+        )}
       </div>
 
       {/* Duration + instructions banner */}

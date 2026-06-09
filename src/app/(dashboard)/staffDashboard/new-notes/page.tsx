@@ -34,13 +34,16 @@ export default function NewNotes() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) { toast.error("Please select a file."); return; }
+    if (!file) {
+      toast.error("Please select a file.");
+      return;
+    }
     setLoading(true);
     try {
       // Upload PDF to Supabase Storage ("notes" bucket needs authenticated-upload policy).
       const { data: uploadData, error: uploadError } = await SupaClient.storage
         .from("notes")
-        .upload(`/f/${file.name}-${Date.now()}.pdf`, file);
+        .upload(`f/${file.name}-${Date.now()}.pdf`, file);
 
       if (uploadError || !uploadData?.path) {
         toast.error("File upload failed.");
@@ -59,7 +62,8 @@ export default function NewNotes() {
           subCode: state.subjectName,
           semester: state.semester,
           branchName: session.data?.user
-            ? (session.data.user as { branch_name?: string }).branch_name ?? "CSE"
+            ? (session.data.user as { branch_name?: string }).branch_name ??
+              "CSE"
             : "CSE",
         }),
       });
@@ -71,7 +75,13 @@ export default function NewNotes() {
       }
 
       toast.success("Notes uploaded successfully!");
-      setState({ title: "", unitNo: "", unitName: "", semester: "", subjectName: "" });
+      setState({
+        title: "",
+        unitNo: "",
+        unitName: "",
+        semester: "",
+        subjectName: "",
+      });
       setFile(null);
       router.push("/staffDashboard/notes");
     } catch {
@@ -94,7 +104,10 @@ export default function NewNotes() {
         <h1 className="font-display font-semibold text-ink">Upload Notes</h1>
       </div>
 
-      <form onSubmit={onSubmit} className="bg-white rounded-2xl border border-forest/8 shadow-card p-8 space-y-5">
+      <form
+        onSubmit={onSubmit}
+        className="bg-white rounded-2xl border border-forest/8 shadow-card p-8 space-y-5"
+      >
         {/* File upload */}
         <div>
           <label className={labelCls}>PDF File *</label>
@@ -108,7 +121,11 @@ export default function NewNotes() {
             <AiOutlineCloudUpload
               className={`text-3xl ${file ? "text-emerald" : "text-muted"}`}
             />
-            <span className={`text-sm font-medium ${file ? "text-emerald" : "text-muted"}`}>
+            <span
+              className={`text-sm font-medium ${
+                file ? "text-emerald" : "text-muted"
+              }`}
+            >
               {file ? file.name : "Click to select a PDF file"}
             </span>
             <input
@@ -122,7 +139,9 @@ export default function NewNotes() {
 
         {/* Title */}
         <div>
-          <label htmlFor="title" className={labelCls}>Title *</label>
+          <label htmlFor="title" className={labelCls}>
+            Title *
+          </label>
           <input
             id="title"
             required
@@ -136,7 +155,9 @@ export default function NewNotes() {
         {/* Unit No + Unit Name */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="unitNo" className={labelCls}>Unit No *</label>
+            <label htmlFor="unitNo" className={labelCls}>
+              Unit No *
+            </label>
             <input
               id="unitNo"
               required
@@ -147,7 +168,9 @@ export default function NewNotes() {
             />
           </div>
           <div>
-            <label htmlFor="unitName" className={labelCls}>Unit Name *</label>
+            <label htmlFor="unitName" className={labelCls}>
+              Unit Name *
+            </label>
             <input
               id="unitName"
               required
@@ -162,7 +185,9 @@ export default function NewNotes() {
         {/* Semester + Subject */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="semester" className={labelCls}>Semester *</label>
+            <label htmlFor="semester" className={labelCls}>
+              Semester *
+            </label>
             <select
               id="semester"
               required
@@ -172,12 +197,16 @@ export default function NewNotes() {
             >
               <option value="">Select semester</option>
               {[1, 2, 3, 4, 5, 6].map((s) => (
-                <option key={s} value={String(s)}>{s}</option>
+                <option key={s} value={String(s)}>
+                  {s}
+                </option>
               ))}
             </select>
           </div>
           <div>
-            <label htmlFor="subject" className={labelCls}>Subject *</label>
+            <label htmlFor="subject" className={labelCls}>
+              Subject *
+            </label>
             <select
               id="subject"
               required
@@ -187,7 +216,9 @@ export default function NewNotes() {
             >
               <option value="">Select subject</option>
               {Subjects.map((s) => (
-                <option key={s.value} value={s.value}>{s.name}</option>
+                <option key={s.value} value={s.value}>
+                  {s.name}
+                </option>
               ))}
             </select>
           </div>

@@ -8,14 +8,27 @@ import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
-  AiOutlineArrowLeft, AiOutlineSend, AiOutlineUser,
-  AiOutlineShareAlt, AiOutlineCopy, AiOutlineStar,
+  AiOutlineArrowLeft,
+  AiOutlineSend,
+  AiOutlineUser,
+  AiOutlineShareAlt,
+  AiOutlineCopy,
+  AiOutlineStar,
 } from "react-icons/ai";
 import { BsBellFill, BsBell } from "react-icons/bs";
 import { toast } from "react-hot-toast";
 
-interface Comment { id: string; text: string; createdAt: string; authorName: string; }
-interface ReviewSummary { average: number | null; count: number; userRating: number | null; }
+interface Comment {
+  id: string;
+  text: string;
+  createdAt: string;
+  authorName: string;
+}
+interface ReviewSummary {
+  average: number | null;
+  count: number;
+  userRating: number | null;
+}
 
 export default function ViewNotesPage() {
   const router = useRouter();
@@ -28,7 +41,11 @@ export default function ViewNotesPage() {
   const [posting, setPosting] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const [review, setReview] = useState<ReviewSummary>({ average: null, count: 0, userRating: null });
+  const [review, setReview] = useState<ReviewSummary>({
+    average: null,
+    count: 0,
+    userRating: null,
+  });
   const [pendingRating, setPendingRating] = useState(0);
   const [submittingReview, setSubmittingReview] = useState(false);
 
@@ -40,7 +57,9 @@ export default function ViewNotesPage() {
     if (!id) return;
     fetch(`/api/notes/comments?noteId=${id}`)
       .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setComments(data); })
+      .then((data) => {
+        if (Array.isArray(data)) setComments(data);
+      })
       .catch(() => {});
   }, [id]);
 
@@ -50,9 +69,14 @@ export default function ViewNotesPage() {
     fetch(`/api/notes/reviews?noteId=${id}`)
       .then((r) => r.json())
       .then((data) => {
-        setReview({ average: data.average ?? null, count: data.count ?? 0, userRating: null });
-        const myReview = data.reviews?.find((r: { authorName: string; rating: number }) => r.authorName === "You");
-        if (myReview) { setReview((p) => ({ ...p, userRating: myReview.rating })); setPendingRating(myReview.rating); }
+        const userRating =
+          typeof data.userRating === "number" ? data.userRating : null;
+        setReview({
+          average: data.average ?? null,
+          count: data.count ?? 0,
+          userRating,
+        });
+        if (userRating != null) setPendingRating(userRating);
       })
       .catch(() => {});
   }, [id]);
@@ -62,7 +86,9 @@ export default function ViewNotesPage() {
     if (!feed?.sub_code) return;
     fetch("/api/notes/subscriptions")
       .then((r) => r.json())
-      .then((codes: string[]) => { if (Array.isArray(codes)) setSubscribed(codes.includes(feed.sub_code)); })
+      .then((codes: string[]) => {
+        if (Array.isArray(codes)) setSubscribed(codes.includes(feed.sub_code));
+      })
       .catch(() => {});
   }, [feed?.sub_code]);
 
@@ -79,7 +105,10 @@ export default function ViewNotesPage() {
       if (res.ok) {
         setComments((prev) => [...prev, data]);
         setCommentText("");
-        setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+        setTimeout(
+          () => bottomRef.current?.scrollIntoView({ behavior: "smooth" }),
+          100,
+        );
       }
     } finally {
       setPosting(false);
@@ -113,7 +142,9 @@ export default function ViewNotesPage() {
       });
       const data = await res.json();
       setSubscribed(data.subscribed);
-      toast.success(data.subscribed ? "Subscribed to subject!" : "Unsubscribed.");
+      toast.success(
+        data.subscribed ? "Subscribed to subject!" : "Unsubscribed.",
+      );
     } finally {
       setSubLoading(false);
     }
@@ -122,7 +153,12 @@ export default function ViewNotesPage() {
   const shareNote = async () => {
     const url = `${window.location.origin}/dashboard/notes/v/${id}`;
     if (typeof navigator.share === "function") {
-      try { await navigator.share({ title: feed?.title, url }); return; } catch { /* user cancelled */ }
+      try {
+        await navigator.share({ title: feed?.title, url });
+        return;
+      } catch {
+        /* user cancelled */
+      }
     }
     await navigator.clipboard.writeText(url);
     toast.success("Link copied to clipboard!");
@@ -143,20 +179,29 @@ export default function ViewNotesPage() {
       <div className="bg-white shadow-md flex flex-col w-2/3">
         {/* Header */}
         <div className="w-full px-10 flex border-b border-gray-300 py-4 items-center gap-3">
-          <AiOutlineArrowLeft className="text-xl cursor-pointer" onClick={() => router.back()} />
+          <AiOutlineArrowLeft
+            className="text-xl cursor-pointer"
+            onClick={() => router.back()}
+          />
           <span className="text-xl flex-1">Notes</span>
           {/* Subscribe toggle */}
           <button
             onClick={toggleSubscription}
             disabled={subLoading}
-            title={subscribed ? "Unsubscribe from subject" : "Subscribe to subject"}
+            title={
+              subscribed ? "Unsubscribe from subject" : "Subscribe to subject"
+            }
             className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
               subscribed
                 ? "bg-emerald text-white border-emerald"
                 : "border-forest/20 text-muted hover:border-emerald/40"
             }`}
           >
-            {subscribed ? <BsBellFill className="text-sm" /> : <BsBell className="text-sm" />}
+            {subscribed ? (
+              <BsBellFill className="text-sm" />
+            ) : (
+              <BsBell className="text-sm" />
+            )}
             {subscribed ? "Subscribed" : "Subscribe"}
           </button>
           {/* Share */}
@@ -176,7 +221,8 @@ export default function ViewNotesPage() {
             <iframe
               src={
                 feed.file_url?.startsWith("f/")
-                  ? SupaClient.storage.from("notes").getPublicUrl(feed.file_url).data.publicUrl
+                  ? SupaClient.storage.from("notes").getPublicUrl(feed.file_url)
+                      .data.publicUrl
                   : feed.file_url ?? ""
               }
               title={feed.title}
@@ -199,23 +245,40 @@ export default function ViewNotesPage() {
               )}
               <div>
                 <div className="flex items-center gap-1">
-                  <h1 className="text-sm whitespace-nowrap text-slate-950 font-medium">{feed.title}</h1>
+                  <h1 className="text-sm whitespace-nowrap text-slate-950 font-medium">
+                    {feed.title}
+                  </h1>
                   <span className="text-slate-600">·</span>
-                  <span className="text-sm text-slate-500">{moment(new Date(feed.uploaded_date!)).fromNow()}</span>
+                  <span className="text-sm text-slate-500">
+                    {moment(new Date(feed.uploaded_date!)).fromNow()}
+                  </span>
                 </div>
-                <span className="text-sm text-slate-500">{feed.User.first_name}</span>
+                <span className="text-sm text-slate-500">
+                  {feed.User.first_name}
+                </span>
               </div>
             </div>
             <div className="py-2 px-5 flex items-center gap-3 flex-wrap">
-              <span className="bg-green-200 text-green-500 rounded-full px-2 py-1">Branch - {feed.branch_name}</span>
-              <span className="bg-green-200 text-green-500 rounded-full px-2 py-1">Sem - {feed.sem_no}</span>
-              <span className="bg-green-200 text-green-500 rounded-full px-2 py-1">Subject Code - {feed.subjects.sub_code}</span>
-              <span className="bg-green-200 text-green-500 rounded-full px-2 py-1">Subject - {feed.subjects.sub_name}</span>
+              <span className="bg-green-200 text-green-500 rounded-full px-2 py-1">
+                Branch - {feed.branch_name}
+              </span>
+              <span className="bg-green-200 text-green-500 rounded-full px-2 py-1">
+                Sem - {feed.sem_no}
+              </span>
+              <span className="bg-green-200 text-green-500 rounded-full px-2 py-1">
+                Subject Code - {feed.subjects.sub_code}
+              </span>
+              <span className="bg-green-200 text-green-500 rounded-full px-2 py-1">
+                Subject - {feed.subjects.sub_name}
+              </span>
             </div>
             <div className="flex items-center justify-between py-3 px-2">
               <div className="flex gap-5">
                 <LikeButton noteId={feed.id} initialLikes={feed.likes ?? 0} />
-                <DisLikeButton noteId={feed.id} initialDislikes={feed.dislikes ?? 0} />
+                <DisLikeButton
+                  noteId={feed.id}
+                  initialDislikes={feed.dislikes ?? 0}
+                />
               </div>
               {/* Copy link fallback */}
               <button
@@ -240,15 +303,23 @@ export default function ViewNotesPage() {
                   className="text-xl transition-colors"
                 >
                   <AiOutlineStar
-                    className={star <= (pendingRating || 0) ? "text-amber-400 fill-amber-400" : "text-muted"}
-                    style={{ fill: star <= (pendingRating || 0) ? "#fbbf24" : "none" }}
+                    className={
+                      star <= (pendingRating || 0)
+                        ? "text-amber-400 fill-amber-400"
+                        : "text-muted"
+                    }
+                    style={{
+                      fill: star <= (pendingRating || 0) ? "#fbbf24" : "none",
+                    }}
                   />
                 </button>
               ))}
             </div>
             <span className="text-xs text-muted">
               {review.average != null
-                ? `${review.average} avg (${review.count} rating${review.count !== 1 ? "s" : ""})`
+                ? `${review.average} avg (${review.count} rating${
+                    review.count !== 1 ? "s" : ""
+                  })`
                 : "No ratings yet"}
             </span>
           </div>
@@ -261,7 +332,9 @@ export default function ViewNotesPage() {
           </h3>
 
           {comments.length === 0 ? (
-            <p className="text-muted text-sm mb-4">No comments yet — be the first!</p>
+            <p className="text-muted text-sm mb-4">
+              No comments yet — be the first!
+            </p>
           ) : (
             <div className="space-y-3 mb-4 max-h-72 overflow-y-auto pr-1">
               {comments.map((c) => (
@@ -271,8 +344,12 @@ export default function ViewNotesPage() {
                   </div>
                   <div className="flex-1 bg-cream rounded-xl px-3 py-2">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-xs font-semibold text-ink">{c.authorName}</span>
-                      <span className="text-[10px] text-muted">{moment(c.createdAt).fromNow()}</span>
+                      <span className="text-xs font-semibold text-ink">
+                        {c.authorName}
+                      </span>
+                      <span className="text-[10px] text-muted">
+                        {moment(c.createdAt).fromNow()}
+                      </span>
                     </div>
                     <p className="text-sm text-ink mt-0.5">{c.text}</p>
                   </div>
@@ -287,7 +364,9 @@ export default function ViewNotesPage() {
             <input
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && postComment()}
+              onKeyDown={(e) =>
+                e.key === "Enter" && !e.shiftKey && postComment()
+              }
               placeholder="Write a comment…"
               className="flex-1 rounded-xl border border-forest/15 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/40"
             />

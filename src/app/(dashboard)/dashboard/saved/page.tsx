@@ -20,9 +20,12 @@ export default function SavedPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/notes/favourites")
+    fetch("/api/notes/saved")
       .then((r) => r.json())
-      .then((data) => { setNotes(Array.isArray(data) ? data : []); setLoading(false); })
+      .then((data) => {
+        setNotes(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, []);
 
@@ -44,7 +47,9 @@ export default function SavedPage() {
       {notes.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <span className="text-5xl">🔖</span>
-          <p className="text-muted text-sm">No saved notes yet. Tap the bookmark on any note to save it.</p>
+          <p className="text-muted text-sm">
+            No saved notes yet. Tap the bookmark on any note to save it.
+          </p>
         </div>
       ) : (
         <div className="grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-5">
@@ -56,8 +61,12 @@ export default function SavedPage() {
                     <BsBookHalf className="text-emerald" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-ink text-sm truncate">{note.title}</p>
-                    <p className="text-xs text-muted mt-0.5">{note.unit_name}</p>
+                    <p className="font-semibold text-ink text-sm truncate">
+                      {note.title}
+                    </p>
+                    <p className="text-xs text-muted mt-0.5">
+                      {note.unit_name}
+                    </p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mb-3">
@@ -72,7 +81,9 @@ export default function SavedPage() {
                   </span>
                 </div>
                 {note.uploaded_date && (
-                  <p className="text-[10px] text-muted">{moment(note.uploaded_date).fromNow()}</p>
+                  <p className="text-[10px] text-muted">
+                    {moment(note.uploaded_date).fromNow()}
+                  </p>
                 )}
               </div>
             </Link>
