@@ -66,9 +66,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Issue OTP for email verification; falls back to console in dev (SMTP_HOST unset).
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-    const { hash: hashFn } = await import("bcrypt");
-    const hashedOtp = await hashFn(otp, 10);
+    const { randomInt } = await import("crypto");
+    const otp = String(randomInt(100000, 1000000));
+    const hashedOtp = await hash(otp, 10);
     const expires = new Date(Date.now() + 10 * 60 * 1000);
 
     await prisma.verificationToken.deleteMany({ where: { identifier: email } });

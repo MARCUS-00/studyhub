@@ -17,6 +17,10 @@ drop policy if exists "authenticated upload avatars" on storage.objects;
 drop policy if exists "authenticated update avatars" on storage.objects;
 drop policy if exists "public read notes objects" on storage.objects;
 drop policy if exists "public read avatars objects" on storage.objects;
+drop policy if exists "anon and authenticated upload notes" on storage.objects;
+drop policy if exists "anon and authenticated update notes" on storage.objects;
+drop policy if exists "anon and authenticated upload avatars" on storage.objects;
+drop policy if exists "anon and authenticated update avatars" on storage.objects;
 
 create policy "anon and authenticated upload notes"
 on storage.objects

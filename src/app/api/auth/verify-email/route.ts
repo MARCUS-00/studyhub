@@ -17,7 +17,8 @@ export async function POST(req: NextRequest) {
     // Always return 200 so callers cannot enumerate valid emails.
     if (!user) return NextResponse.json({ success: true });
 
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const { randomInt } = await import("crypto");
+    const otp = String(randomInt(100000, 1000000));
     const hashedOtp = await hash(otp, 10);
     const expires = new Date(Date.now() + 10 * 60 * 1000);
 
