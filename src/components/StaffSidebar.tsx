@@ -87,7 +87,7 @@ export default function StaffSidebar({ children }: StaffSidebarProps) {
           {navItems.map(({ href, icon: Icon, label, match }) => {
             const active = match(pathname);
             return (
-              <Link key={href} href={href} title={label}>
+              <Link key={href} href={href} title={label} prefetch={false}>
                 <button
                   className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${
                     active
@@ -103,7 +103,7 @@ export default function StaffSidebar({ children }: StaffSidebarProps) {
         </nav>
 
         <div className="flex flex-col items-center gap-2">
-          <Link href="/staffDashboard/profile" title="Profile">
+          <Link href="/staffDashboard/profile" title="Profile" prefetch={false}>
             <button className="w-11 h-11 rounded-xl flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors">
               <FaRegUser className="text-xl" />
             </button>

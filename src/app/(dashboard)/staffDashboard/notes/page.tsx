@@ -26,6 +26,7 @@ export default function NotesPage() {
         </div>
         <Link
           href="/staffDashboard/new-notes"
+          prefetch={false}
           className="flex items-center gap-2 bg-forest text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-forest-mid transition-colors"
         >
           <SlNote className="text-base" /> New Notes

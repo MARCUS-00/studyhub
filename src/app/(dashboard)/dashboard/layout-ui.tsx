@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { HiHome } from "react-icons/hi";
@@ -93,7 +92,7 @@ export default function DashboardLayoutUI({
           {navItems.map(({ href, icon: Icon, label, match }) => {
             const active = match(pathname);
             return (
-              <Link key={href} href={href} title={label}>
+              <Link key={href} href={href} title={label} prefetch={false}>
                 <button
                   className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${
                     active
@@ -110,7 +109,7 @@ export default function DashboardLayoutUI({
 
         {/* Bottom */}
         <div className="flex flex-col items-center gap-2">
-          <Link href="/dashboard/profile" title="Profile">
+          <Link href="/dashboard/profile" title="Profile" prefetch={false}>
             <button className="w-11 h-11 rounded-xl flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-colors">
               <FaRegUser className="text-xl" />
             </button>
