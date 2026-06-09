@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { NextAuthOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 // GET ?testId= — check whether the current user has already submitted this test
 export async function GET(req: NextRequest) {
@@ -23,7 +24,8 @@ export async function GET(req: NextRequest) {
 }
 
 // POST { testId, answers: { questionId: string; answer: string }[] }
-// Scores server-side; rejects duplicate submissions.
+// Scores server-side. The DB-level @@unique([userId, testsId]) on marks guards against
+// race conditions — two simultaneous submissions hit P2002 and only one wins.
 export async function POST(req: NextRequest) {
   const session = await getServerSession(NextAuthOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -38,10 +40,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "testId and answers are required." }, { status: 400 });
 
     const userId = session.user.id;
-
-    const existing = await prisma.marks.findFirst({ where: { userId, testsId: testId } });
-    if (existing)
-      return NextResponse.json({ error: "Already submitted.", alreadySubmitted: true }, { status: 409 });
 
     const questions = await prisma.questions.findMany({
       where: { testsId: testId },
@@ -62,12 +60,16 @@ export async function POST(req: NextRequest) {
     await prisma.$transaction([
       prisma.answers.createMany({ data: answerData }),
       prisma.marks.create({ data: { userId, testsId: testId, marks: totalMarks } }),
-      // Award +10 virtual points for completing a test (Phase 6)
       prisma.user.update({ where: { id: userId }, data: { points: { increment: 10 } } }),
     ]);
 
     return NextResponse.json({ score: totalMarks, total: questions.length }, { status: 201 });
   } catch (err) {
+    // P2002 = unique constraint violation — the marks row already exists,
+    // meaning a concurrent request already committed a submission.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return NextResponse.json({ error: "Already submitted.", alreadySubmitted: true }, { status: 409 });
+    }
     console.error("[tests/submit]", err);
     return NextResponse.json({ error: "Internal server error." }, { status: 500 });
   }

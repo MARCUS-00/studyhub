@@ -31,8 +31,9 @@ export const NextAuthOptions: AuthOptions = {
         const isValid = await compare(credentials.password, user.password);
         if (!isValid) return null;
 
-        // Block login until the user has verified their email via OTP.
-        if (!user.email_verified) return null;
+        // Throw a named error so the sign-in page can redirect to OTP verification
+        // instead of showing a generic "Invalid credentials" message.
+        if (!user.email_verified) throw new Error("unverified_email");
 
         return {
           id: user.id,
@@ -49,7 +50,6 @@ export const NextAuthOptions: AuthOptions = {
     newUser: "/signup",
   },
   callbacks: {
-    // authorize already returns id + role — store them in the token once.
     jwt: async ({ user, token }) => {
       if (user) {
         token.uid = user.id;

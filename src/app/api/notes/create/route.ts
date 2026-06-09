@@ -29,8 +29,18 @@ export async function POST(req: NextRequest) {
 
     const branch = branchName?.trim() || "CSE";
 
+    // Ensure lookup tables exist before creating the note (FK guards).
     await prisma.semesters.upsert({ where: { sem_no: semester }, update: {}, create: { sem_no: semester } });
     await prisma.branch.upsert({ where: { branch_name: branch }, update: {}, create: { branch_name: branch } });
+
+    // subjects has a required sub_name; validate it exists rather than blindly inserting.
+    const subject = await prisma.subjects.findUnique({ where: { sub_code: subCode } });
+    if (!subject) {
+      return NextResponse.json(
+        { error: `Subject code "${subCode}" does not exist. Ask an admin to create it first.` },
+        { status: 400 }
+      );
+    }
 
     const note = await prisma.notes.create({
       data: {
