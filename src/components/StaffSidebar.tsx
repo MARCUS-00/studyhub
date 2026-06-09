@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { HiHome, HiOutlinePlus } from "react-icons/hi";
@@ -32,7 +33,11 @@ function getPageTitle(pathname: string) {
   );
 }
 
-export default function StaffSidebar({ children }: { children: React.ReactNode }) {
+interface StaffSidebarProps {
+  readonly children: React.ReactNode;
+}
+
+export default function StaffSidebar({ children }: StaffSidebarProps) {
   const pathname = usePathname();
   const session = useSession();
 
@@ -40,9 +45,11 @@ export default function StaffSidebar({ children }: { children: React.ReactNode }
     <div className="flex h-screen w-screen overflow-hidden bg-cream">
       {/* ── Sidebar ── */}
       <aside className="w-[70px] bg-forest flex flex-col items-center py-5 flex-shrink-0">
-        <div className="bg-emerald/20 rounded-xl px-2 py-1 mb-6">
-          <span className="font-display font-bold text-white text-sm">S</span>
-        </div>
+        <Link href="/staffDashboard" title="StudyHub Home" className="mb-6">
+          <div className="bg-emerald/20 rounded-xl p-2 flex items-center justify-center">
+            <Image src="/logo.png" alt="StudyHub logo" width={28} height={28} priority />
+          </div>
+        </Link>
 
         <nav className="flex flex-col items-center gap-2 flex-1">
           {navItems.map(({ href, icon: Icon, label, match }) => {

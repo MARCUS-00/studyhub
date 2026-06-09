@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
@@ -15,8 +16,8 @@ import { MdHistory } from "react-icons/md";
 import { FaRegUser } from "react-icons/fa";
 import { IoExitOutline } from "react-icons/io5";
 
-interface props {
-  children: React.ReactNode;
+interface DashboardLayoutUIProps {
+  readonly children: React.ReactNode;
 }
 
 const navItems = [
@@ -42,7 +43,7 @@ function getPageTitle(pathname: string) {
   );
 }
 
-export default function DashboardLayoutUI({ children }: props) {
+export default function DashboardLayoutUI({ children }: DashboardLayoutUIProps) {
   const pathname = usePathname();
   const session = useSession();
   const dispatch = useAppDispatch();
@@ -64,9 +65,11 @@ export default function DashboardLayoutUI({ children }: props) {
       {/* ── Sidebar ── */}
       <aside className="w-[70px] bg-forest flex flex-col items-center py-5 flex-shrink-0">
         {/* Logo */}
-        <div className="bg-emerald/20 rounded-xl px-2 py-1 mb-6">
-          <span className="font-display font-bold text-white text-sm">S</span>
-        </div>
+        <Link href="/dashboard" title="StudyHub Home" className="mb-6">
+          <div className="bg-emerald/20 rounded-xl p-2 flex items-center justify-center">
+            <Image src="/logo.png" alt="StudyHub logo" width={28} height={28} priority />
+          </div>
+        </Link>
 
         {/* Nav */}
         <nav className="flex flex-col items-center gap-2 flex-1">
