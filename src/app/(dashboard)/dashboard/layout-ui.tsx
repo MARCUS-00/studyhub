@@ -21,11 +21,36 @@ interface DashboardLayoutUIProps {
 }
 
 const navItems = [
-  { href: "/dashboard", icon: HiHome, label: "Home", match: (p: string) => p === "/dashboard" },
-  { href: "/dashboard/notes", icon: BsBookHalf, label: "Notes", match: (p: string) => p.startsWith("/dashboard/notes") },
-  { href: "/dashboard/attendTest", icon: GiNotebook, label: "Tests", match: (p: string) => p.startsWith("/dashboard/attendTest") },
-  { href: "/dashboard/testHistory", icon: MdHistory, label: "History", match: (p: string) => p.startsWith("/dashboard/testHistory") },
-  { href: "/dashboard/saved", icon: BsBookmarkHeart, label: "Saved", match: (p: string) => p.startsWith("/dashboard/saved") },
+  {
+    href: "/dashboard",
+    icon: HiHome,
+    label: "Home",
+    match: (p: string) => p === "/dashboard",
+  },
+  {
+    href: "/dashboard/notes",
+    icon: BsBookHalf,
+    label: "Notes",
+    match: (p: string) => p.startsWith("/dashboard/notes"),
+  },
+  {
+    href: "/dashboard/attendTest",
+    icon: GiNotebook,
+    label: "Tests",
+    match: (p: string) => p.startsWith("/dashboard/attendTest"),
+  },
+  {
+    href: "/dashboard/testHistory",
+    icon: MdHistory,
+    label: "History",
+    match: (p: string) => p.startsWith("/dashboard/testHistory"),
+  },
+  {
+    href: "/dashboard/saved",
+    icon: BsBookmarkHeart,
+    label: "Saved",
+    match: (p: string) => p.startsWith("/dashboard/saved"),
+  },
 ];
 
 const pageTitles: Record<string, string> = {
@@ -39,11 +64,14 @@ const pageTitles: Record<string, string> = {
 
 function getPageTitle(pathname: string) {
   return (
-    Object.entries(pageTitles).find(([key]) => pathname.startsWith(key))?.[1] ?? "Dashboard"
+    Object.entries(pageTitles).find(([key]) => pathname.startsWith(key))?.[1] ??
+    "Dashboard"
   );
 }
 
-export default function DashboardLayoutUI({ children }: DashboardLayoutUIProps) {
+export default function DashboardLayoutUI({
+  children,
+}: DashboardLayoutUIProps) {
   const pathname = usePathname();
   const session = useSession();
   const dispatch = useAppDispatch();
@@ -67,7 +95,13 @@ export default function DashboardLayoutUI({ children }: DashboardLayoutUIProps) 
         {/* Logo */}
         <Link href="/dashboard" title="StudyHub Home" className="mb-6">
           <div className="bg-emerald/20 rounded-xl p-2 flex items-center justify-center">
-            <Image src="/logo.png" alt="StudyHub logo" width={28} height={28} priority />
+            <Image
+              src="/logo.png"
+              alt="StudyHub logo"
+              width={28}
+              height={28}
+              priority
+            />
           </div>
         </Link>
 
@@ -112,14 +146,14 @@ export default function DashboardLayoutUI({ children }: DashboardLayoutUIProps) 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="h-14 bg-white border-b border-forest/8 flex items-center justify-between px-6 flex-shrink-0">
-          <h1 className="font-display font-semibold text-ink">{getPageTitle(pathname)}</h1>
+          <h1 className="font-display font-semibold text-ink">
+            {getPageTitle(pathname)}
+          </h1>
           <span className="text-sm text-muted">{session.data?.user?.name}</span>
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto bg-cream">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto bg-cream">{children}</main>
       </div>
     </div>
   );

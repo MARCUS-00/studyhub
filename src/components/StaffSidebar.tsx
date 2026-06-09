@@ -11,11 +11,36 @@ import { FaRegUser } from "react-icons/fa";
 import { IoExitOutline } from "react-icons/io5";
 
 const navItems = [
-  { href: "/staffDashboard",              icon: HiHome,        label: "Home",         match: (p: string) => p === "/staffDashboard" },
-  { href: "/staffDashboard/notes",        icon: BsBookHalf,    label: "My Notes",     match: (p: string) => p.startsWith("/staffDashboard/notes") },
-  { href: "/staffDashboard/new-notes",    icon: HiOutlinePlus, label: "Upload Notes", match: (p: string) => p.startsWith("/staffDashboard/new-notes") },
-  { href: "/staffDashboard/new-test",     icon: MdOutlineQuiz, label: "Create Test",  match: (p: string) => p.startsWith("/staffDashboard/new-test") },
-  { href: "/staffDashboard/test-history", icon: MdHistory,     label: "Test History", match: (p: string) => p.startsWith("/staffDashboard/test-history") },
+  {
+    href: "/staffDashboard",
+    icon: HiHome,
+    label: "Home",
+    match: (p: string) => p === "/staffDashboard",
+  },
+  {
+    href: "/staffDashboard/notes",
+    icon: BsBookHalf,
+    label: "My Notes",
+    match: (p: string) => p.startsWith("/staffDashboard/notes"),
+  },
+  {
+    href: "/staffDashboard/new-notes",
+    icon: HiOutlinePlus,
+    label: "Upload Notes",
+    match: (p: string) => p.startsWith("/staffDashboard/new-notes"),
+  },
+  {
+    href: "/staffDashboard/new-test",
+    icon: MdOutlineQuiz,
+    label: "Create Test",
+    match: (p: string) => p.startsWith("/staffDashboard/new-test"),
+  },
+  {
+    href: "/staffDashboard/test-history",
+    icon: MdHistory,
+    label: "Test History",
+    match: (p: string) => p.startsWith("/staffDashboard/test-history"),
+  },
 ];
 
 const pageTitles: Record<string, string> = {
@@ -29,7 +54,8 @@ const pageTitles: Record<string, string> = {
 
 function getPageTitle(pathname: string) {
   return (
-    Object.entries(pageTitles).find(([key]) => pathname.startsWith(key))?.[1] ?? "Dashboard"
+    Object.entries(pageTitles).find(([key]) => pathname.startsWith(key))?.[1] ??
+    "Dashboard"
   );
 }
 
@@ -47,7 +73,13 @@ export default function StaffSidebar({ children }: StaffSidebarProps) {
       <aside className="w-[70px] bg-forest flex flex-col items-center py-5 flex-shrink-0">
         <Link href="/staffDashboard" title="StudyHub Home" className="mb-6">
           <div className="bg-emerald/20 rounded-xl p-2 flex items-center justify-center">
-            <Image src="/logo.png" alt="StudyHub logo" width={28} height={28} priority />
+            <Image
+              src="/logo.png"
+              alt="StudyHub logo"
+              width={28}
+              height={28}
+              priority
+            />
           </div>
         </Link>
 
@@ -89,13 +121,13 @@ export default function StaffSidebar({ children }: StaffSidebarProps) {
       {/* ── Main area ── */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-14 bg-white border-b border-forest/8 flex items-center justify-between px-6 flex-shrink-0">
-          <h1 className="font-display font-semibold text-ink">{getPageTitle(pathname)}</h1>
+          <h1 className="font-display font-semibold text-ink">
+            {getPageTitle(pathname)}
+          </h1>
           <span className="text-sm text-muted">{session.data?.user?.name}</span>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-cream">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto bg-cream">{children}</main>
       </div>
     </div>
   );

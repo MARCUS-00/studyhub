@@ -6,7 +6,13 @@ export default function Navbar() {
     <nav className="bg-slate-50 drop-shadow-md h-20 flex items-center justify-between px-5 py-2 text-xl font-mono font-bold">
       <div className="flex flex-row items-center gap-2">
         <h1>
-          <Image src="/logo.png" alt="StudyHub logo" width={50} height={50} priority />
+          <Image
+            src="/logo.png"
+            alt="StudyHub logo"
+            width={50}
+            height={50}
+            priority
+          />
         </h1>{" "}
         <h1>STUDYHUB</h1>{" "}
       </div>
