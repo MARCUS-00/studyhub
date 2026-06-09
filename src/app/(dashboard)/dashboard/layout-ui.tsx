@@ -5,10 +5,6 @@ import Image from "next/image";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { useAppSelector } from "@/store/index";
-import { useAppDispatch } from "@/utils/hooks";
-import { getNotes } from "@/store/notes.slice";
-import { TestsSelector, getTestsWithQuestions } from "@/store/tests.slice";
 import { HiHome } from "react-icons/hi";
 import { BsBookHalf, BsBookmarkHeart } from "react-icons/bs";
 import { GiNotebook } from "react-icons/gi";
@@ -74,19 +70,6 @@ export default function DashboardLayoutUI({
 }: DashboardLayoutUIProps) {
   const pathname = usePathname();
   const session = useSession();
-  const dispatch = useAppDispatch();
-  const notesIds = useAppSelector((state) => state.notes.ids);
-  const testIds = useAppSelector(TestsSelector.selectIds);
-
-  useEffect(() => {
-    if (notesIds.length === 0) dispatch(getNotes());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (testIds.length === 0) dispatch(getTestsWithQuestions());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-cream">

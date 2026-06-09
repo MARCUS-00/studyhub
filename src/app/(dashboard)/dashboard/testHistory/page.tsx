@@ -1,6 +1,7 @@
 "use client";
 import { useAppSelector } from "@/store/index";
-import { TestsSelector } from "@/store/tests.slice";
+import { TestsSelector, getTestsWithQuestions } from "@/store/tests.slice";
+import { useAppDispatch } from "@/utils/hooks";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Test from "@/components/Test";
@@ -13,10 +14,15 @@ interface HistoryRow {
 }
 
 export default function TestHistoryPage() {
+  const dispatch = useAppDispatch();
   const allTests = useAppSelector(TestsSelector.selectAll);
   const [submittedIds, setSubmittedIds] = useState<Set<string>>(new Set());
   const [scoreMap, setScoreMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (allTests.length === 0) dispatch(getTestsWithQuestions());
+  }, [allTests.length, dispatch]);
 
   useEffect(() => {
     fetch("/api/tests/history")
@@ -50,7 +56,9 @@ export default function TestHistoryPage() {
   return (
     <div className="p-8">
       <div className="mb-6">
-        <h2 className="font-display font-bold text-xl text-ink">My Test History</h2>
+        <h2 className="font-display font-bold text-xl text-ink">
+          My Test History
+        </h2>
         <p className="text-sm text-muted mt-1">
           {attempted.length} test{attempted.length === 1 ? "" : "s"} completed
         </p>
@@ -59,7 +67,9 @@ export default function TestHistoryPage() {
       {attempted.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <span className="text-5xl">📋</span>
-          <p className="text-muted text-sm">You have not completed any tests yet.</p>
+          <p className="text-muted text-sm">
+            You have not completed any tests yet.
+          </p>
         </div>
       ) : (
         <div className="grid lg:grid-cols-4 md:grid-cols-3 grid-cols-2 gap-5">
