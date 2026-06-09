@@ -3,8 +3,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { AiOutlineArrowLeft, AiOutlineDelete } from "react-icons/ai";
-import { SupaClient } from "@/utils/supabase";
-import { useSession } from "next-auth/react";
 
 const SUBJECTS = [
   { value: "20CS21P", name: "Operating Systems" },
@@ -17,21 +15,24 @@ interface Question {
   question: string;
   choices: Choice[];
   answerIdx: number;
+  explanation: string;
 }
 
 const emptyQuestion = (): Question => ({
   question: "",
   choices: [{ text: "" }, { text: "" }, { text: "" }, { text: "" }],
   answerIdx: 0,
+  explanation: "",
 });
 
 const inputCls = "w-full rounded-xl border border-forest/15 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/40 focus:border-emerald transition";
 
 export default function NewTestPage() {
   const router = useRouter();
-  const session = useSession();
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState(SUBJECTS[0].value);
+  const [durationMinutes, setDurationMinutes] = useState<string>("");
+  const [instructions, setInstructions] = useState("");
   const [questions, setQuestions] = useState<Question[]>([emptyQuestion()]);
   const [loading, setLoading] = useState(false);
 
@@ -59,23 +60,24 @@ export default function NewTestPage() {
     }
     setLoading(true);
     try {
-      const { data: test, error: testErr } = await SupaClient.from("tests").insert({
-        test_title: title,
-        subjectsSub_code: subject,
-        userId: session.data?.user?.id,
-      }).select("id").single();
-      if (testErr || !test) throw testErr;
-
-      for (const q of questions) {
-        const choicesArray = q.choices.map(c => c.text);
-        await SupaClient.from("questions").insert({
-          question: q.question,
-          choices: choicesArray,
-          answer: choicesArray[q.answerIdx],
-          testsId: test.id,
-        });
-      }
-
+      const res = await fetch("/api/tests/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          subCode: subject,
+          durationMinutes: durationMinutes ? Number(durationMinutes) : null,
+          instructions: instructions || null,
+          questions: questions.map((q) => ({
+            question: q.question,
+            choices: q.choices.map((c) => c.text),
+            answerIdx: q.answerIdx,
+            explanation: q.explanation || null,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error ?? "Failed to publish test."); return; }
       toast.success("Test published!");
       router.push("/staffDashboard");
     } catch {
@@ -99,15 +101,39 @@ export default function NewTestPage() {
       {/* Test meta */}
       <div className="bg-white rounded-2xl border border-forest/8 shadow-card p-6 mb-6 space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-ink uppercase tracking-wider mb-1.5">Test Title *</label>
-          <input value={title} onChange={e => setTitle(e.target.value)}
+          <label htmlFor="test-title" className="block text-xs font-semibold text-ink uppercase tracking-wider mb-1.5">Test Title *</label>
+          <input id="test-title" value={title} onChange={e => setTitle(e.target.value)}
             placeholder="e.g. OS Chapter 3 Mock Test" className={inputCls} />
         </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="test-subject" className="block text-xs font-semibold text-ink uppercase tracking-wider mb-1.5">Subject *</label>
+            <select id="test-subject" value={subject} onChange={e => setSubject(e.target.value)} className={inputCls}>
+              {SUBJECTS.map(s => <option key={s.value} value={s.value}>{s.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-ink uppercase tracking-wider mb-1.5">Duration (minutes)</label>
+            <input
+              type="number"
+              min="1"
+              max="300"
+              value={durationMinutes}
+              onChange={e => setDurationMinutes(e.target.value)}
+              placeholder="e.g. 30"
+              className={inputCls}
+            />
+          </div>
+        </div>
         <div>
-          <label className="block text-xs font-semibold text-ink uppercase tracking-wider mb-1.5">Subject *</label>
-          <select value={subject} onChange={e => setSubject(e.target.value)} className={inputCls}>
-            {SUBJECTS.map(s => <option key={s.value} value={s.value}>{s.name}</option>)}
-          </select>
+          <label className="block text-xs font-semibold text-ink uppercase tracking-wider mb-1.5">Instructions</label>
+          <textarea
+            value={instructions}
+            onChange={e => setInstructions(e.target.value)}
+            placeholder="Optional instructions for students…"
+            rows={2}
+            className={`${inputCls} resize-none`}
+          />
         </div>
       </div>
 
@@ -133,7 +159,7 @@ export default function NewTestPage() {
               className={`${inputCls} resize-none mb-4`}
             />
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 mb-4">
               {q.choices.map((c, ci) => {
                 const isCorrect = q.answerIdx === ci;
                 return (
@@ -160,6 +186,17 @@ export default function NewTestPage() {
                   </div>
                 );
               })}
+            </div>
+
+            <div>
+              <label htmlFor={`q-${qi}-explanation`} className="block text-xs font-semibold text-muted uppercase tracking-wider mb-1.5">Explanation (optional)</label>
+              <input
+                id={`q-${qi}-explanation`}
+                value={q.explanation}
+                onChange={e => updateQuestion(qi, "explanation", e.target.value)}
+                placeholder="Explain why the correct answer is right…"
+                className={inputCls}
+              />
             </div>
           </div>
         ))}

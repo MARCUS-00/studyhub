@@ -4,8 +4,6 @@ import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import { AiOutlineArrowLeft, AiOutlineCloudUpload } from "react-icons/ai";
 import { SupaClient } from "@/utils/supabase";
-import { useAppDispatch } from "@/utils/hooks";
-import { postNotes } from "@/store/notes.slice";
 import { useSession } from "next-auth/react";
 
 const Subjects = [
@@ -29,7 +27,6 @@ export default function NewNotes() {
   });
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const dispatch = useAppDispatch();
   const session = useSession();
 
   const update = (key: string, value: string) =>
@@ -40,26 +37,43 @@ export default function NewNotes() {
     if (!file) { toast.error("Please select a file."); return; }
     setLoading(true);
     try {
-      const response = await SupaClient.storage
+      // Upload PDF to Supabase Storage ("notes" bucket needs authenticated-upload policy).
+      const { data: uploadData, error: uploadError } = await SupaClient.storage
         .from("notes")
         .upload(`/f/${file.name}-${Date.now()}.pdf`, file);
-      const path = response.data?.path;
-      if (path && session.data) {
-        dispatch(
-          postNotes({
-            title: state.title,
-            fileUrl: path,
-            unitNo: state.unitNo,
-            unitName: state.unitName,
-            subCode: state.subjectName,
-            semester: state.semester,
-            userId: session.data.user?.id!,
-          })
-        );
-        toast.success("Notes uploaded successfully!");
-        setState({ title: "", unitNo: "", unitName: "", semester: "", subjectName: "" });
-        setFile(null);
+
+      if (uploadError || !uploadData?.path) {
+        toast.error("File upload failed.");
+        return;
       }
+
+      // Insert DB row server-side with the returned storage path.
+      const res = await fetch("/api/notes/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: state.title,
+          fileUrl: uploadData.path,
+          unitNo: state.unitNo,
+          unitName: state.unitName,
+          subCode: state.subjectName,
+          semester: state.semester,
+          branchName: session.data?.user
+            ? (session.data.user as { branch_name?: string }).branch_name ?? "CSE"
+            : "CSE",
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? "Failed to save note.");
+        return;
+      }
+
+      toast.success("Notes uploaded successfully!");
+      setState({ title: "", unitNo: "", unitName: "", semester: "", subjectName: "" });
+      setFile(null);
+      router.push("/staffDashboard/notes");
     } catch {
       toast.error("Something went wrong.");
     } finally {

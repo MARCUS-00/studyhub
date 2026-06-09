@@ -1,46 +1,41 @@
 "use client";
-import { useSession } from "next-auth/react";
 import { useAppSelector } from "@/store/index";
 import { TestsSelector } from "@/store/tests.slice";
-import { SupaClient } from "@/utils/supabase";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Test from "@/components/Test";
 
-interface UserMark {
-  testsId: string | null;
+interface HistoryRow {
+  testId: string | null;
   marks: number;
+  testTitle: string;
+  totalQuestions: number;
 }
 
 export default function TestHistoryPage() {
-  const session = useSession();
   const allTests = useAppSelector(TestsSelector.selectAll);
   const [submittedIds, setSubmittedIds] = useState<Set<string>>(new Set());
   const [scoreMap, setScoreMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const userId = session.data?.user?.id;
-    if (!userId) return;
-
-    SupaClient.from("marks")
-      .select("testsId,marks")
-      .eq("userId", userId)
-      .then(({ data }) => {
-        if (!data) { setLoading(false); return; }
+    fetch("/api/tests/history")
+      .then((r) => r.json())
+      .then((data: HistoryRow[]) => {
         const ids = new Set<string>();
         const scores: Record<string, number> = {};
-        (data as UserMark[]).forEach((row) => {
-          if (row.testsId) {
-            ids.add(row.testsId);
-            scores[row.testsId] = row.marks;
+        (data ?? []).forEach((row) => {
+          if (row.testId) {
+            ids.add(row.testId);
+            scores[row.testId] = row.marks;
           }
         });
         setSubmittedIds(ids);
         setScoreMap(scores);
         setLoading(false);
-      });
-  }, [session.data?.user?.id]);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   const attempted = allTests.filter((t) => submittedIds.has(t.id));
 

@@ -1,5 +1,4 @@
 "use client";
-import { SupaClient } from "@/utils/supabase";
 import { useEffect, useMemo, useState } from "react";
 
 interface ResultRow {
@@ -18,21 +17,10 @@ export default function TestHistoryPage() {
   const [testFilter, setTestFilter] = useState("all");
 
   useEffect(() => {
-    SupaClient.from("marks")
-      .select("id,marks,testsId,userId,tests(test_title,questions(id)),User(first_name,last_name,mail_id)")
-      .then(({ data }) => {
-        if (!data) return;
-        const rows: ResultRow[] = data.map((r: any) => ({
-          id: r.id,
-          marks: r.marks ?? 0,
-          testTitle: r.tests?.test_title ?? "Unknown",
-          totalQuestions: r.tests?.questions?.length ?? 0,
-          studentName: `${r.User?.first_name ?? ""} ${r.User?.last_name ?? ""}`.trim(),
-          studentEmail: r.User?.mail_id ?? "",
-        }));
-        setResults(rows);
-        setLoading(false);
-      });
+    fetch("/api/tests/staff-results")
+      .then((r) => r.json())
+      .then((data) => { setResults(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
 
   const testTitles = useMemo(

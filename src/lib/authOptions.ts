@@ -31,6 +31,9 @@ export const NextAuthOptions: AuthOptions = {
         const isValid = await compare(credentials.password, user.password);
         if (!isValid) return null;
 
+        // Block login until the user has verified their email via OTP.
+        if (!user.email_verified) return null;
+
         return {
           id: user.id,
           email: user.mail_id,

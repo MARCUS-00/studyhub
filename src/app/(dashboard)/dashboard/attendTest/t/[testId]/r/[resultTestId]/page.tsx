@@ -4,29 +4,12 @@ import { TestsSelector } from "@/store/tests.slice";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { SupaClient } from "@/utils/supabase";
-
-type AnswerRow = { marks: number; userId: string | null };
 
 function getMedal(pct: number) {
   if (pct >= 90) return "🏆";
   if (pct >= 70) return "🎯";
   if (pct >= 50) return "📚";
   return "💪";
-}
-
-async function fetchScore(testId: string, userId: string) {
-  const { data } = await SupaClient.from("questions")
-    .select("answers(marks,userId)")
-    .eq("testsId", testId);
-  if (!data) return { gain: 0, total: 0 };
-
-  let gain = 0;
-  for (const q of data) {
-    const mine = (q.answers as AnswerRow[]).find((a) => a.userId === userId);
-    gain += mine?.marks ?? 0;
-  }
-  return { gain, total: data.length };
 }
 
 export default function TestResultPage() {
@@ -39,12 +22,17 @@ export default function TestResultPage() {
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    const userId = session.data?.user?.id;
-    if (!userId || !id) return;
-    fetchScore(id, userId).then(({ gain: g, total: t }) => {
-      setGain(g);
-      setTotal(t);
-    });
+    if (!id) return;
+    // Use the submission-status endpoint which returns score + total directly.
+    fetch(`/api/tests/submit?testId=${id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.submitted) {
+          setGain(data.score ?? 0);
+          setTotal(data.total ?? 0);
+        }
+      })
+      .catch(() => {});
   }, [id, session.data?.user?.id]);
 
   const pct = total > 0 ? Math.round((gain / total) * 100) : 0;

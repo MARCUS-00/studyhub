@@ -40,32 +40,27 @@ model Session {
 model User {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
-  first_name String
-  last_name  String
-  mail_id    String  @unique
-  password   String?
+  first_name     String
+  last_name      String
+  mail_id        String   @unique
+  password       String?
+  email_verified Boolean  @default(false)  // Phase 4: must be true before login is allowed
+  skills         String[] @default([])      // Phase 4: e.g. ["Web Dev","ML","DSA"]
+  points         Int      @default(0)       // Phase 6: virtual points
 
   address String
-  // student_test    student_test_details[]
-  branch  branch  @relation(fields: [branch_name], references: [branch_name])
-  // favourites_list favourites[]
+  branch  branch @relation(fields: [branch_name], references: [branch_name])
   note    notes[]
 
-  // test_history test_history[]
   prof_image String
 
   semesters    semesters      @relation(fields: [sem_no], references: [sem_no])
   sem_no       String
   role         Roles
-  // review          review[]
-  // test_details    test_details[]
   college      college        @relation(fields: [college_code], references: [college_code])
   college_code String
-  // review_reply    review_reply[]
   branch_name  String
   user_details user_details[]
-  // student_answers student_answers[]
-  // question_papers question_papers[]
   Account      Account[]
   Session      Session[]
   tests        tests[]
@@ -73,6 +68,9 @@ model User {
   answers      answers[]
   note_likes   note_likes[]
   favourites   favourites[]
+  note_comments note_comments[]
+  note_reviews  note_reviews[]
+  subscriptions subscriptions[]
 
   @@index([id])
   @@map("User")
@@ -107,14 +105,12 @@ model subjects {
   semester semesters @relation(fields: [sem_no], references: [sem_no])
   sem_no   String
   notes    notes[]
-  // test_details    test_details[]
-  // question_papers question_papers[]
   tests    tests[]
+  subscriptions subscriptions[]
 }
 
 model semesters {
   sem_no   String     @id @unique
-  // test_details test_details[]
   User     User[]
   subjects subjects[]
   notes    notes[]
@@ -124,7 +120,6 @@ model branch {
   branch_name String  @id @unique
   notes       notes[]
   users       User[]
-  // question_papers question_papers[]
 }
 
 model college {
@@ -143,18 +138,21 @@ model tests {
   subjectsSub_code String?
   User             User?       @relation(fields: [userId], references: [id])
   userId           String?     @db.Uuid
+  duration_minutes Int?        // Phase 7: optional time limit in minutes
+  instructions     String?     // Phase 7: shown to students before they start
   questions        questions[]
   marks            marks[]
 }
 
 model questions {
-  id       String    @id @default(dbgenerated("gen_random_uuid()"))
-  question String    @db.Text
-  choices  String[]
-  answer   String    @db.Text
-  tests    tests?    @relation(fields: [testsId], references: [id])
-  testsId  String?   @db.Uuid
-  answers  answers[]
+  id          String    @id @default(dbgenerated("gen_random_uuid()"))
+  question    String    @db.Text
+  choices     String[]
+  answer      String    @db.Text
+  explanation String?   @db.Text  // Phase 7: shown after submission
+  tests       tests?    @relation(fields: [testsId], references: [id])
+  testsId     String?   @db.Uuid
+  answers     answers[]
 }
 
 model marks {
@@ -216,107 +214,46 @@ model notes {
   limit_visibility Boolean?  @default(false)
   favourites       favourites[]
   note_likes       note_likes[]
-  // review           review[]
+  note_comments    note_comments[]
+  note_reviews     note_reviews[]
   users            User      @relation(fields: [usersId], references: [id])
   usersId          String    @db.Uuid
   branch_name      String
 }
 
-// model review {
-//   id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-//   User           User           @relation(fields: [user_id], references: [id])
-//   user_id        String         @db.Uuid
-//   review_content String
-//   uploaded_date  DateTime
-//   note           notes          @relation(fields: [notes_id], references: [id])
-//   notes_id       String         @default(uuid()) @db.Uuid
-//   review_replies review_reply[]
-// }
+// Phase 5: comments on notes
+model note_comments {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  text       String
+  created_at DateTime @default(now())
+  noteId     String?  @db.Uuid
+  userId     String?  @db.Uuid
+  notes      notes?   @relation(fields: [noteId], references: [id])
+  User       User?    @relation(fields: [userId], references: [id])
+}
 
-// model review_reply {
-//   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+// Phase 6: ratings on notes (1–5 stars + optional text)
+model note_reviews {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rating     Int
+  text       String?
+  created_at DateTime @default(now())
+  noteId     String?  @db.Uuid
+  userId     String?  @db.Uuid
+  notes      notes?   @relation(fields: [noteId], references: [id])
+  User       User?    @relation(fields: [userId], references: [id])
 
-//   users              User          @relation(fields: [usersId], references: [id])
-//   usersId            String        @db.Uuid
-//   review             review        @relation(fields: [reviewId], references: [id])
-//   reviewId           String        @db.Uuid
-//   reply              review_reply? @relation("own_reply")
-//   reply_review_reply review_reply? @relation("own_reply", fields: [review_reply_id], references: [id])
-//   review_reply_id    String?       @unique @db.Uuid
-//   content            String
-// }
+  @@unique([userId, noteId])
+}
 
-// model question_papers {
-//   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-//   subject       subjects  @relation(fields: [sub_code], references: [sub_code])
-//   sub_code      String
-//   branch        branch    @relation(fields: [branch_name], references: [branch_name])
-//   branch_name   String
-//   User          User      @relation(fields: [user_id], references: [id])
-//   user_id       String    @db.Uuid
-//   file_url      String?
-//   title         String
-//   year          String
-//   uploaded_date DateTime?
-// }
+// Phase 6: subject subscriptions for in-app notifications
+model subscriptions {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at DateTime  @default(now())
+  userId     String    @db.Uuid
+  subCode    String
+  User       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject    subjects  @relation(fields: [subCode], references: [sub_code], onDelete: Cascade)
 
-// model test_details {
-//   id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-//   test_title           String
-//   subject              subjects               @relation(fields: [sub_code], references: [sub_code])
-//   sub_code             String
-//   questions_details    questions_details[]
-//   timelimit            DateTime?              @default(now())
-//   conduction_date      DateTime?              @default(now())
-//   lifetime             Boolean?               @default(false)
-//   end_date             DateTime?              @default(now())
-//   student_test_details student_test_details[]
-//   test_history         test_history[]
-//   users                User                   @relation(fields: [usersId], references: [id])
-//   usersId              String                 @db.Uuid
-//   semesters            semesters?             @relation(fields: [sem_no], references: [sem_no])
-//   sem_no               String?
-// }
-
-// model questions_details {
-//   id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-//   question        String
-//   options         String[]
-//   answer          String
-//   test            test_details      @relation(fields: [test_id], references: [id])
-//   test_id         String            @default(uuid()) @db.Uuid
-//   student_answers student_answers[]
-// }
-
-// model student_test_details {
-//   id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-//   test           test_details @relation(fields: [test_id], references: [id])
-//   test_id        String       @default(uuid()) @db.Uuid
-//   total_marks    Int
-//   duration       DateTime     @default(now())
-//   submitted_date DateTime     @default(now())
-//   users          User         @relation(fields: [usersId], references: [id])
-//   usersId        String       @db.Uuid
-// }
-
-// model student_answers {
-//   id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-//   answer String
-
-//   questions_details questions_details @relation(fields: [q_id], references: [id])
-//   q_id              String            @db.Uuid
-//   users             User              @relation(fields: [usersId], references: [id])
-//   usersId           String            @db.Uuid
-// }
-
-// model test_history {
-//   id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-//   conduction_date DateTime     @default(now())
-//   test            test_details @relation(fields: [test_id], references: [id])
-//   test_id         String       @default(uuid()) @db.Uuid
-
-//   submitted_date  DateTime @default(now())
-//   marks_allocated Int
-//   users           User     @relation(fields: [usersId], references: [id])
-//   usersId         String   @db.Uuid
-// }
+  @@unique([userId, subCode])
+}

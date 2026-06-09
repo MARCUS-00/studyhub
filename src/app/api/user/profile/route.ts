@@ -9,10 +9,22 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const details = await prisma.user_details.findFirst({
-    where: { usersId: session.user.id },
-    select: { reg_no: true, mobile_no: true, bio: true },
-  });
+  const [details, user] = await Promise.all([
+    prisma.user_details.findFirst({
+      where: { usersId: session.user.id },
+      select: { reg_no: true, mobile_no: true, bio: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { points: true, skills: true },
+    }),
+  ]);
 
-  return NextResponse.json({ regNo: details?.reg_no ?? null, mobileNo: details?.mobile_no ?? null, bio: details?.bio ?? null });
+  return NextResponse.json({
+    regNo: details?.reg_no ?? null,
+    mobileNo: details?.mobile_no ?? null,
+    bio: details?.bio ?? null,
+    points: user?.points ?? 0,
+    skills: user?.skills ?? [],
+  });
 }

@@ -22,41 +22,12 @@ export const getNotes = createAsyncThunk<any, void, { rejectValue: any }>(
   }
 );
 
-export const postNotes = createAsyncThunk<
-  any,
-  {
-    title: string;
-    unitNo: string;
-    unitName: string;
-    subCode: string;
-    fileUrl: string;
-    semester: string;
-    userId: string;
-    branchName?: string;
-  },
-  { rejectValue: any }
->(
+// postNotes DB insert removed — notes are now created via POST /api/notes/create
+// after the client uploads the PDF to Supabase Storage. This export is kept for
+// backwards compatibility but is no longer dispatched by any page.
+export const postNotes = createAsyncThunk<any, Record<string, never>, { rejectValue: any }>(
   "/notes/postNotes",
-  async (payload, { fulfillWithValue, rejectWithValue }) => {
-    try {
-      const response = await SupaClient.from("notes").insert({
-        title: payload.title,
-        unit_no: payload.unitNo,
-        unit_name: payload.unitName,
-        branch_name: payload.branchName ?? "CSE",
-        sem_no: payload.semester,
-        usersId: payload.userId,
-        sub_code: payload.subCode,
-        file_url: payload.fileUrl,
-        dislikes: 0,
-        likes: 0,
-      });
-      if (response.error) return rejectWithValue(response.error);
-      return fulfillWithValue(true);
-    } catch (e) {
-      return rejectWithValue(e);
-    }
-  }
+  async (_payload, { fulfillWithValue }) => fulfillWithValue(true)
 );
 
 export type Notes = Database["public"]["Tables"]["notes"]["Row"] & {

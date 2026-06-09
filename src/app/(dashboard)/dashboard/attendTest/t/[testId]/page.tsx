@@ -4,8 +4,7 @@ import { TestsSelector } from "@/store/tests.slice";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
-import { AiOutlineArrowLeft } from "react-icons/ai";
-import { SupaClient } from "@/utils/supabase";
+import { AiOutlineArrowLeft, AiOutlineClockCircle } from "react-icons/ai";
 import { useSession } from "next-auth/react";
 
 export default function TestViewPage() {
@@ -22,14 +21,10 @@ export default function TestViewPage() {
   useEffect(() => {
     const userId = session.data?.user?.id;
     if (!userId || !id) return;
-    SupaClient.from("marks")
-      .select("id")
-      .eq("userId", userId)
-      .eq("testsId", id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) setAlreadySubmitted(true);
-      });
+    fetch(`/api/tests/submit?testId=${id}`)
+      .then((r) => r.json())
+      .then((data) => { if (data.submitted) setAlreadySubmitted(true); })
+      .catch(() => {});
   }, [session.data?.user?.id, id]);
 
   const onSubmit = async () => {
@@ -37,39 +32,34 @@ export default function TestViewPage() {
       toast.error("You have already submitted this test.");
       return;
     }
+    if (!feed) return;
     setSubmit(true);
     try {
-      if (feed) {
-        let totalMarks = 0;
-        await Promise.all(
-          feed.questions.map(async (question) => {
-            // Fetch the correct answer server-side at submission time.
-            const response = await SupaClient.from("questions")
-              .select("answer")
-              .eq("id", question.id)
-              .single();
-            const isCorrect = state[question.id] === response.data?.answer;
-            if (isCorrect) totalMarks++;
-            await SupaClient.from("answers").insert({
-              answer: state[question.id] ?? "",
-              questionsId: question.id,
-              userId: session.data?.user?.id,
-              marks: isCorrect ? 1 : 0,
-            });
-          })
-        );
-        await SupaClient.from("marks").insert({
-          marks: totalMarks,
-          testsId: feed.id,
-          userId: session.data?.user?.id,
-        });
+      const res = await fetch("/api/tests/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          testId: id,
+          answers: feed.questions.map((q) => ({
+            questionId: q.id,
+            answer: state[q.id] ?? "",
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (data.alreadySubmitted) {
         setAlreadySubmitted(true);
-        router.replace(`/dashboard/attendTest/t/${feed.id}/r/${feed.id}`);
+        router.replace(`/dashboard/attendTest/t/${id}/r/${id}`);
+        return;
       }
+      if (!res.ok) { toast.error(data.error ?? "Submission failed."); return; }
+      setAlreadySubmitted(true);
+      router.replace(`/dashboard/attendTest/t/${id}/r/${id}`);
     } catch {
       toast.error("Something went wrong!");
+    } finally {
+      setSubmit(false);
     }
-    setSubmit(false);
   };
 
   if (!feed) {
@@ -114,6 +104,21 @@ export default function TestViewPage() {
           <p className="text-xs text-muted mt-0.5">{answered} of {total} answered</p>
         </div>
       </div>
+
+      {/* Duration + instructions banner */}
+      {(feed.duration_minutes || feed.instructions) && (
+        <div className="bg-white rounded-2xl border border-forest/8 shadow-card p-4 mb-6 space-y-1.5">
+          {feed.duration_minutes && (
+            <div className="flex items-center gap-2 text-sm text-ink">
+              <AiOutlineClockCircle className="text-emerald flex-shrink-0" />
+              <span><span className="font-semibold">{feed.duration_minutes} minutes</span> time limit</span>
+            </div>
+          )}
+          {feed.instructions && (
+            <p className="text-sm text-muted pl-6">{feed.instructions}</p>
+          )}
+        </div>
+      )}
 
       {/* Progress bar */}
       <div className="h-1.5 bg-cream-dk rounded-full mb-8 overflow-hidden">

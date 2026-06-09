@@ -35,18 +35,22 @@ export default function ProfilePage() {
     mobileNo: "",
   });
 
+  const [points, setPoints] = useState<number | null>(null);
+  const [skills, setSkills] = useState<string[]>([]);
   const [changingPw, setChangingPw] = useState(false);
   const [pwSaving, setPwSaving] = useState(false);
   const [pwForm, setPwForm] = useState({ old: "", new: "", confirm: "" });
 
   const inputCls = "w-full rounded-xl border border-forest/15 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald/40 focus:border-emerald transition";
 
-  // Load user details (reg_no, mobile_no)
+  // Load user details (reg_no, mobile_no, points, skills)
   useEffect(() => {
     fetch("/api/user/profile")
       .then(r => r.json())
       .then(d => {
         if (d.mobileNo) setForm(p => ({ ...p, mobileNo: d.mobileNo }));
+        if (typeof d.points === "number") setPoints(d.points);
+        if (Array.isArray(d.skills)) setSkills(d.skills);
       })
       .catch(() => undefined);
   }, []);
@@ -166,6 +170,28 @@ export default function ProfilePage() {
         </span>
         <h2 className="font-display font-bold text-xl text-white">{user?.name ?? "—"}</h2>
         <p className="text-sm text-white/60">{user?.email ?? "—"}</p>
+      </div>
+
+      {/* Points + skills stats */}
+      <div className="grid grid-cols-2 gap-4 mb-5">
+        <div className="bg-white rounded-2xl border border-forest/8 shadow-card p-5 text-center">
+          <p className="font-display font-bold text-3xl text-emerald">{points ?? "—"}</p>
+          <p className="text-xs text-muted mt-1 font-semibold uppercase tracking-wider">Study Points</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-forest/8 shadow-card p-5">
+          <p className="text-xs text-muted font-semibold uppercase tracking-wider mb-2">Interests</p>
+          {skills.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {skills.map((s) => (
+                <span key={s} className="text-[10px] font-semibold bg-emerald/10 text-emerald px-2 py-0.5 rounded-full">
+                  {s}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted">None selected</p>
+          )}
+        </div>
       </div>
 
       {/* Personal info card */}
