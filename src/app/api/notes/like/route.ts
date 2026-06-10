@@ -60,7 +60,14 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ likes: updated?.likes, dislikes: updated?.dislikes });
-  } catch {
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      "code" in err &&
+      (err as { code: string }).code === "P2002"
+    ) {
+      return NextResponse.json({ error: "Already reacted." }, { status: 409 });
+    }
     return NextResponse.json({ error: "Internal server error." }, { status: 500 });
   }
 }

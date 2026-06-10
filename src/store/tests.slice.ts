@@ -67,6 +67,9 @@ export const TestsSlice = createSlice({
       .addCase(getTestsWithQuestions.fulfilled, (state, action) => {
         state.tests.isPending = false;
         TestsAdapter.setAll(state.tests, action.payload);
+      })
+      .addCase(getTestsWithQuestions.rejected, (state) => {
+        state.tests.isPending = false;
       });
   },
 });

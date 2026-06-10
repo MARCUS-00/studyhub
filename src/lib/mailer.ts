@@ -22,8 +22,8 @@ export async function sendOtpEmail(to: string, otp: string): Promise<void> {
   await transporter.sendMail({
     from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
     to,
-    subject: "StudyHub — Your password reset OTP",
-    text: `Your one-time password is: ${otp}\n\nIt expires in 10 minutes. Do not share it.`,
-    html: `<p>Your one-time password is: <strong>${otp}</strong></p><p>It expires in 10 minutes. Do not share it.</p>`,
+    subject: "StudyHub — Your verification code",
+    text: `Your one-time code is: ${otp}\n\nIt expires in 10 minutes. Do not share it.`,
+    html: `<p>Your one-time code is: <strong>${otp}</strong></p><p>It expires in 10 minutes. Do not share it.</p>`,
   });
 }

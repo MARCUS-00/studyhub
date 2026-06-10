@@ -22,13 +22,6 @@ export const getNotes = createAsyncThunk<any, void, { rejectValue: any }>(
   }
 );
 
-// postNotes DB insert removed — notes are now created via POST /api/notes/create
-// after the client uploads the PDF to Supabase Storage. This export is kept for
-// backwards compatibility but is no longer dispatched by any page.
-export const postNotes = createAsyncThunk<any, Record<string, never>, { rejectValue: any }>(
-  "/notes/postNotes",
-  async (_payload, { fulfillWithValue }) => fulfillWithValue(true)
-);
 
 export type Notes = Database["public"]["Tables"]["notes"]["Row"] & {
   User: Pick<

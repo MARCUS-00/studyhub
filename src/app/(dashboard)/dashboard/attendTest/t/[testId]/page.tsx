@@ -7,21 +7,34 @@ import { toast } from "react-hot-toast";
 import { AiOutlineArrowLeft, AiOutlineClockCircle } from "react-icons/ai";
 import { useSession } from "next-auth/react";
 
+type TimerPhase = "idle" | "running" | "expired";
+
+function getTimerPhase(t: number | null): TimerPhase {
+  if (t === null) return "idle";
+  if (t <= 0) return "expired";
+  return "running";
+}
+
 export default function TestViewPage() {
   const router = useRouter();
   const params = useParams();
-  const id = params.testId as string;
-  const feed = useAppSelector((state) => TestsSelector.selectById(state, id));
-  const [state, setState] = useState<{ [key: string]: string }>({});
-  const [isSubmitting, setSubmit] = useState(false);
+  const id = Array.isArray(params.testId) ? params.testId[0] : (params.testId ?? "");
+  const feed = useAppSelector((s) => TestsSelector.selectById(s, id));
+
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  // Ref so onSubmit always reads the latest answers without appearing in
+  // the timer effect's dep array (which would restart the interval on each click).
+  const answersRef = useRef(answers);
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const session = useSession();
 
-  // Countdown timer (seconds). Initialised once feed loads.
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerPhase = getTimerPhase(timeLeft);
 
-  // Check for an existing submission so students cannot submit twice.
+  // Check for an existing submission so students cannot re-submit.
   useEffect(() => {
     const userId = session.data?.user?.id;
     if (!userId || !id) return;
@@ -31,7 +44,7 @@ export default function TestViewPage() {
       .catch(() => {});
   }, [session.data?.user?.id, id]);
 
-  // Seed the timer once feed is available and has a duration.
+  // Seed the timer once when the test first loads with a duration.
   useEffect(() => {
     if (feed?.duration_minutes && !alreadySubmitted && timeLeft === null) {
       setTimeLeft(feed.duration_minutes * 60);
@@ -44,7 +57,7 @@ export default function TestViewPage() {
       return;
     }
     if (!feed) return;
-    setSubmit(true);
+    setIsSubmitting(true);
     try {
       const res = await fetch("/api/tests/submit", {
         method: "POST",
@@ -53,7 +66,7 @@ export default function TestViewPage() {
           testId: id,
           answers: feed.questions.map((q) => ({
             questionId: q.id,
-            answer: state[q.id] ?? "",
+            answer: answersRef.current[q.id] ?? "",
           })),
         }),
       });
@@ -69,22 +82,30 @@ export default function TestViewPage() {
     } catch {
       toast.error("Something went wrong!");
     } finally {
-      setSubmit(false);
+      setIsSubmitting(false);
     }
-  }, [alreadySubmitted, feed, id, router, state]);
+  }, [alreadySubmitted, feed, id, router]);
 
-  // Tick the timer; auto-submit on expiry.
+  // Run the countdown. Depends on `timerPhase` (not `timeLeft`) so the
+  // interval is not torn down and re-created every second — only when the
+  // phase changes (idle → running → expired).
   useEffect(() => {
-    if (timeLeft === null || alreadySubmitted) return;
-    if (timeLeft <= 0) {
-      if (timerRef.current) clearInterval(timerRef.current);
+    if (timerPhase !== "running" || alreadySubmitted) return;
+    const intervalId = setInterval(() => setTimeLeft((t) => (t ?? 1) - 1), 1000);
+    return () => clearInterval(intervalId);
+  }, [timerPhase, alreadySubmitted]);
+
+  // Auto-submit when time runs out.
+  useEffect(() => {
+    if (timerPhase === "expired" && !alreadySubmitted) {
       toast("Time's up! Submitting your answers…", { icon: "⏰" });
       onSubmit();
-      return;
     }
-    timerRef.current = setInterval(() => setTimeLeft((t) => (t ?? 1) - 1), 1000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [timeLeft, alreadySubmitted, onSubmit]);
+  }, [timerPhase, alreadySubmitted, onSubmit]);
+
+  const selectAnswer = useCallback((questionId: string, choice: string) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: choice }));
+  }, []);
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60).toString().padStart(2, "0");
@@ -101,7 +122,7 @@ export default function TestViewPage() {
   }
 
   const total = feed.questions.length;
-  const answered = Object.keys(state).length;
+  const answered = Object.keys(answers).length;
 
   if (alreadySubmitted) {
     return (
@@ -135,7 +156,7 @@ export default function TestViewPage() {
         </div>
         {timeLeft !== null && (
           <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold tabular-nums ${
-            timeLeft <= 60 ? "bg-red-50 text-red-500 border border-red-200" : "bg-emerald/10 text-emerald"
+            timeLeft <= 60 ? "bg-red-50 text-red-500 border border-red-200 animate-pulse" : "bg-emerald/10 text-emerald"
           }`}>
             <AiOutlineClockCircle className="flex-shrink-0" />
             {formatTime(timeLeft)}
@@ -169,7 +190,7 @@ export default function TestViewPage() {
       {/* Questions */}
       <div className="space-y-5">
         {feed.questions.map((question, index) => {
-          const isAnswered = !!state[question.id];
+          const isAnswered = !!answers[question.id];
           return (
             <div
               key={question.id}
@@ -181,33 +202,12 @@ export default function TestViewPage() {
                 <span className="text-muted font-normal mr-2">{index + 1}.</span>
                 {question.question}
               </h2>
-              <div className="grid sm:grid-cols-2 gap-2">
-                {question.choices?.map((choice) => {
-                  const selected = state[question.id] === choice;
-                  return (
-                    <label
-                      key={choice}
-                      className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all ${
-                        selected
-                          ? "border-emerald bg-emerald/8 text-emerald-700"
-                          : "border-forest/10 hover:border-emerald/30 hover:bg-emerald/5"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name={`q-${question.id}`}
-                        value={choice}
-                        checked={selected}
-                        onChange={() =>
-                          setState((prev) => ({ ...prev, [question.id]: choice }))
-                        }
-                        className="accent-emerald"
-                      />
-                      <span className="text-sm">{choice}</span>
-                    </label>
-                  );
-                })}
-              </div>
+              <ChoiceGrid
+                questionId={question.id}
+                choices={question.choices ?? []}
+                selected={answers[question.id]}
+                onSelect={selectAnswer}
+              />
             </div>
           );
         })}
@@ -225,6 +225,46 @@ export default function TestViewPage() {
             : `Submit (${answered}/${total} answered)`}
         </button>
       </div>
+    </div>
+  );
+}
+
+function ChoiceGrid({
+  questionId,
+  choices,
+  selected,
+  onSelect,
+}: Readonly<{
+  questionId: string;
+  choices: string[];
+  selected: string | undefined;
+  onSelect: (questionId: string, choice: string) => void;
+}>) {
+  return (
+    <div className="grid sm:grid-cols-2 gap-2">
+      {choices.map((choice) => {
+        const isSelected = selected === choice;
+        return (
+          <label
+            key={choice}
+            className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all ${
+              isSelected
+                ? "border-emerald bg-emerald/8 text-emerald-700"
+                : "border-forest/10 hover:border-emerald/30 hover:bg-emerald/5"
+            }`}
+          >
+            <input
+              type="radio"
+              name={`q-${questionId}`}
+              value={choice}
+              checked={isSelected}
+              onChange={() => onSelect(questionId, choice)}
+              className="accent-emerald"
+            />
+            <span className="text-sm">{choice}</span>
+          </label>
+        );
+      })}
     </div>
   );
 }

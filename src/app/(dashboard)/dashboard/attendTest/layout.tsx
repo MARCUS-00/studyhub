@@ -1,14 +1,7 @@
-"use client";
-import { useAppDispatch } from "@/utils/hooks";
-import { useAppSelector } from "@/store/index";
-import { TestsSelector, getTestsWithQuestions } from "@/store/tests.slice";
-
-interface props {
-  children: React.ReactNode;
+interface Props {
+  readonly children: React.ReactNode;
 }
 
-export default function RootLayout({ children }: props) {
-  const dispatch = useAppDispatch();
-
+export default function AttendTestLayout({ children }: Props) {
   return <div>{children}</div>;
 }

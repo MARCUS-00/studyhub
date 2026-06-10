@@ -1,12 +1,6 @@
-"use client"
-import React from 'react'
+"use client";
 import Signin from "@/components/signin";
 
-const New = () => {
-  return (
-    
-    <Signin />
-    
-  );
+export default function SignInPage() {
+  return <Signin />;
 }
-export default New;
